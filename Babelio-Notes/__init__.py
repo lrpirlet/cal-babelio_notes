@@ -4,7 +4,7 @@ from __future__ import (unicode_literals, division, absolute_import,
                         print_function)
 
 __license__   = 'GPL v3'
-__copyright__ = 'Christophe'
+__copyright__ = 'Louis Richard Pirlet based on Christophe work'
 __docformat__ = 'restructuredtext en'
 
 # The class that all Interface Action plugin wrappers must inherit from

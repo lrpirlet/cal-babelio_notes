@@ -5,7 +5,7 @@ from __future__ import (unicode_literals, division, absolute_import,
                        print_function)
 
 __license__   = 'GPL v3'
-__copyright__ = 'Christophe'
+__copyright__ = 'Louis Richard Pirlet based on Christophe work'
 __docformat__ = 'restructuredtext en'
 
 import time, re
@@ -22,42 +22,47 @@ from calibre.utils.localization import get_udc
 
 class DownloadBabelioWorker(Source):
 
-    def __init__(self, title, authors, timeout=20):
+    def __init__(self, title, authors, bbl_id, timeout=20):
         self.timeout = timeout
         self.notes = None
         self.votes = None
         self.title = title
         self.authors = authors
+        self.bbl_id = bbl_id
         self.run()
 
     def run(self):
 
         matches = []
         br = browser()
-        
-        print(('self authors %s' %self.authors))
-        print(('self title %s' %self.title))
-        
+
+        print("self.title   : {}".format(self.title))
+        print("self.authors : {}".format(self.authors))
+        print("self.bbl_id  : {}".format(self.bbl_id))
+
+        if self.bbl_id and "/" in self.bbl_id and self.bbl_id.split("/")[-1].isnumeric():
+            query = "https://www.babelio.com/livres/" + self.bbl_id
+
         intab = "àâäéèêëîïôöùûüÿçćåáü"
         outab = "aaaeeeeiioouuuyccaau"
-        
-        title = self.title        
-        title = title.lower()        
+
+        title = self.title
+        title = title.lower()
         trantab = title.maketrans(intab, outab)
-        title = title.translate(trantab) 
-        title = title.replace('œ','oe') 
-        print(('title %s' %title))        
-        
+        title = title.translate(trantab)
+        title = title.replace('œ','oe')
+        print(('title %s' %title))
+
         authors = []
         for author in self.authors:
-            author = author.lower()        
+            author = author.lower()
             trantab = author.maketrans(intab, outab)
-            author = author.translate(trantab) 
+            author = author.translate(trantab)
             author = author.replace('œ','oe')
             authors.append(author)
             print(('author %s' %author))
         print(('authors %s' %authors))
-                
+
         query = self.create_query(title=title, authors=authors)
         # execption levée dans quelques cas http error 403 : Forbidden
         try:
@@ -80,7 +85,7 @@ class DownloadBabelioWorker(Source):
         print('avant notice titre + auteur')
 
         if len(matches) == 0:
-            print('liste vide pour recherche titre + auteur => recherche à parir du titre')            
+            print('liste vide pour recherche titre + auteur => recherche à parir du titre')
             # recherche à partir du titre seul
             query = self.create_query(title=title)
             print(('query %s' %query))
@@ -97,17 +102,17 @@ class DownloadBabelioWorker(Source):
             try:
                 print(('authors pour titre %s' %authors))
                 first_author = authors[0]
-                print ('first_author %s' %first_author)     
+                print ('first_author %s' %first_author)
                 self._parse_search_results_titre(root, matches, first_author)
             except:
                 print('erreur parse titre')
                 return None
                 raise
-             
+
             print('avant notice titre seul')
-            
-            
-        # si notices trouvées avec titre + auteur ou titre seul 
+
+
+        # si notices trouvées avec titre + auteur ou titre seul
         if len(matches) > 0:
             save_vote = 0
             for notice in matches:
@@ -136,6 +141,10 @@ class DownloadBabelioWorker(Source):
 
 
     def create_query(self, title=None, authors=None):
+        '''
+        create_query build and returns an URL with purpose of researching babelio
+        with a book title and first author (author may be empty)
+        '''
 
         BASE_URL = 'http://www.babelio.com/resrecherche.php?Recherche='
         BASE_URL_MID = '+'
@@ -143,8 +152,8 @@ class DownloadBabelioWorker(Source):
 
         q = ''
         au = ''
-        
-        if title:            
+
+        if title:
             #title = get_udc().decode(title)
             title_tokens = list(self.get_title_tokens(title,
                                 strip_joiners=False, strip_subtitle=True))
@@ -155,7 +164,7 @@ class DownloadBabelioWorker(Source):
                     q='+'.join(tokens)
                 except:
                     return None
-        
+
         if authors:
             #authors = [get_udc().decode(a) for a in authors]
             author_tokens = self.get_author_tokens(authors,
@@ -167,16 +176,20 @@ class DownloadBabelioWorker(Source):
                     au='+'.join(tokens)
                 except:
                     return None
-        
+
         if not q:
             return None
         return '%s%s%s%s%s'%(BASE_URL,au,BASE_URL_MID,q,BASE_URL_LAST)
 
     def _parse_search_results(self, root, matches):
+        '''
+        _parse_search_results scans the results of the search and
+        add all books to the list named matches
+        '''
 
         BASE_URL0 = 'http://www.babelio.com'
         print('parse')
-        results = root.xpath('//*[@class="mes_livres"]/table/tbody/tr/td[1]') 
+        results = root.xpath('//*[@class="mes_livres"]/table/tbody/tr/td[1]')
         print(('results %s' %results))
         if not results:
             print('not results')
@@ -188,28 +201,28 @@ class DownloadBabelioWorker(Source):
            matches.append( '%s%s'%(BASE_URL0,result_url[0]))
            print(('matches : %r' %matches))
         print('fin parse')
-        
+
     def _parse_search_results_titre(self, root, matches, first_author):
 
         BASE_URL0 = 'http://www.babelio.com'
         print('parse titre')
         print ('first_author %s' %first_author)
         br = browser()
-        
+
         ind_page = 1
-        while ind_page < 4: 
+        while ind_page < 4:
             if len(matches) > 0:
                 break
-            else:               
+            else:
                 auteurs = root.xpath('//*[@class="mes_livres"]/table/tbody/tr/td[3]')
                 print(('auteurs %s' %auteurs))
                 if not auteurs:
                     print('not auteurs titre')
                     return
-                    
+
                 intab = "àâäéèêëîïôöùûüÿçćåáü"
                 outab = "aaaeeeeiioouuuyccaau"
-                    
+
                 i = 0
                 indice = -1
                 for auteur in auteurs:
@@ -217,34 +230,34 @@ class DownloadBabelioWorker(Source):
                    nom_auteur=auteur.xpath('a/text()')
                    aut=nom_auteur[0].strip().lower()
                    trantab = aut.maketrans(intab, outab)
-                   aut = aut.translate(trantab) 
+                   aut = aut.translate(trantab)
                    aut = aut.replace('œ','oe')
                    print(('nom_auteur %s' %aut))
                    if aut == first_author:
-                     print('auteur trouvé')  
+                     print('auteur trouvé')
                      indice=i
-                     print('indice %s' %indice) 
+                     print('indice %s' %indice)
                      break
-                   i=i+1  
-                    
+                   i=i+1
+
                 results = root.xpath('//*[@class="mes_livres"]/table/tbody/tr/td[1]')
                 i = 0
                 for result in results:
                    print('in results titre')
-                   result_url=result.xpath('a/@href') 
+                   result_url=result.xpath('a/@href')
                    print(('result_url titre %s' %result_url))
-                   print('indice %s' %indice) 
+                   print('indice %s' %indice)
                    if i == indice:
                       matches.append( '%s%s'%(BASE_URL0,result_url[0]))
                       print(('matches titre : %r' %matches))
                       break
                    i=i+1
-        
+
             ind_page = ind_page + 1
             print(('ind_page %s' %ind_page))
             if len(matches) == 0:
                 #page_next = root.xpath('//*[@id="page_corps"]/div/div[4]/div[2]/a[8]/@href')
-                page_next = root.xpath('//div[@class="pagination row"]/a[@class="fleche icon-next"]/@href')                 
+                page_next = root.xpath('//div[@class="pagination row"]/a[@class="fleche icon-next"]/@href')
                 print(('page_next %s' %page_next))
                 if page_next:
                     page = BASE_URL0 + page_next[0]
@@ -254,7 +267,7 @@ class DownloadBabelioWorker(Source):
                     raw = raw.decode('iso-8859-1', errors='replace')
                     root = fromstring(clean_ascii_chars(raw))
                 else:
-                    return    
-  
+                    return
+
         print('fin parse titre seul')
-        
+
