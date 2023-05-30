@@ -123,6 +123,12 @@ class DownloadBabelioWorker(Source):
             for notice in matches:
                 print(('notice %s' %notice))
                 response = br.open_novisit(notice, timeout=self.timeout)
+                if DEBUG:
+                    prints("DEBUG response.getcode() : ", response.getcode())
+                    prints("DEBUG response.info()    : ", response.info())
+                    prints("DEBUG response.geturl()  : ", response.geturl())
+                    prints("DEBUG response.read()           : ", response.read())
+
                 raw = response.read().strip()
                 raw = raw.decode('iso-8859-1', errors='replace')
                 root = fromstring(clean_ascii_chars(raw))
