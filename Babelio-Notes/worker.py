@@ -20,6 +20,9 @@ from calibre.ebooks.metadata.sources.base import Source
 from calibre.utils.cleantext import clean_ascii_chars
 from calibre.utils.localization import get_udc
 
+from calibre import prints
+from calibre.constants import DEBUG
+
 class DownloadBabelioWorker(Source):
 
     def __init__(self, title, authors, bbl_id, timeout=20):
@@ -28,7 +31,7 @@ class DownloadBabelioWorker(Source):
         self.votes = None
         self.title = title
         self.authors = authors
-        self.bbl_id = bbl_id
+        self.bbl_id = bbl_id            # l'idée c'est que si on a babelio_id alors on connais le lvre ET son url
         self.run()
 
     def run(self):
@@ -41,48 +44,51 @@ class DownloadBabelioWorker(Source):
         print("self.bbl_id  : {}".format(self.bbl_id))
 
         if self.bbl_id and "/" in self.bbl_id and self.bbl_id.split("/")[-1].isnumeric():
-            query = "https://www.babelio.com/livres/" + self.bbl_id
+            matches = ["https://www.babelio.com/livres/" + self.bbl_id]
+            if DEBUG: prints("DEBUG: bbl_id matches : ", matches)
 
-        intab = "àâäéèêëîïôöùûüÿçćåáü"
-        outab = "aaaeeeeiioouuuyccaau"
+        if len(matches) == 0:          # on saute au dessus de tout le reste et on trouve les valeurs rating
+            intab = "àâäéèêëîïôöùûüÿçćåáü"
+            outab = "aaaeeeeiioouuuyccaau"
 
-        title = self.title
-        title = title.lower()
-        trantab = title.maketrans(intab, outab)
-        title = title.translate(trantab)
-        title = title.replace('œ','oe')
-        print(('title %s' %title))
+            title = self.title
+            title = title.lower()
+            trantab = title.maketrans(intab, outab)
+            title = title.translate(trantab)
+            title = title.replace('œ','oe')
+            print(('title %s' %title))
 
-        authors = []
-        for author in self.authors:
-            author = author.lower()
-            trantab = author.maketrans(intab, outab)
-            author = author.translate(trantab)
-            author = author.replace('œ','oe')
-            authors.append(author)
-            print(('author %s' %author))
-        print(('authors %s' %authors))
+            authors = []
+            for author in self.authors:
+                author = author.lower()
+                trantab = author.maketrans(intab, outab)
+                author = author.translate(trantab)
+                author = author.replace('œ','oe')
+                authors.append(author)
+                print(('author %s' %author))
+            print(('authors %s' %authors))
 
-        query = self.create_query(title=title, authors=authors)
-        # execption levée dans quelques cas http error 403 : Forbidden
-        try:
-            response = br.open_novisit(query, timeout=self.timeout)
-        except:
-            return None
-        try:
-            raw = response.read().strip()
-            raw = raw.decode('iso-8859-1', errors='replace')
-            #print('raw %s' %raw)
-            root = fromstring(clean_ascii_chars(raw))
-        except:
-            return None
-        try:
-            self._parse_search_results(root, matches)
-        except:
-            print('erreur parse')
-            return None
-            raise
-        print('avant notice titre + auteur')
+            if not query:
+                query = self.create_query(title=title, authors=authors)
+            # execption levée dans quelques cas http error 403 : Forbidden
+            try:
+                response = br.open_novisit(query, timeout=self.timeout)
+            except:
+                return None
+            try:
+                raw = response.read().strip()
+                raw = raw.decode('iso-8859-1', errors='replace')
+                #print('raw %s' %raw)
+                root = fromstring(clean_ascii_chars(raw))
+            except:
+                return None
+            try:
+                self._parse_search_results(root, matches)
+            except:
+                print('erreur parse')
+                return None
+                raise
+            print('avant notice titre + auteur')
 
         if len(matches) == 0:
             print('liste vide pour recherche titre + auteur => recherche à parir du titre')
@@ -111,9 +117,8 @@ class DownloadBabelioWorker(Source):
 
             print('avant notice titre seul')
 
-
         # si notices trouvées avec titre + auteur ou titre seul
-        if len(matches) > 0:
+        if len(matches) > 0:                                 # ok laisse ainsi maintenant... MAIS len doit etre 1 et suelement 1 simon on melange des livres
             save_vote = 0
             for notice in matches:
                 print(('notice %s' %notice))
