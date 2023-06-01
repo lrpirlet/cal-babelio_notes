@@ -79,14 +79,10 @@ class InterfaceBabelioNotes(InterfaceAction):
             authors = mi.authors
             ids = mi.get_identifiers()
             if DEBUG:
+                prints("+-"*40)
                 prints("DEBUG: ids : {}".format(ids))
-                prints(ids.get("babelio_id", ""))
 
-            if "babelio_id" in ids:
-                bbl_id = ids["babelio_id"]
-            else:
-                bbl_id = ""
-            babelio_worker = DownloadBabelioWorker(title,authors,bbl_id)
+            babelio_worker = DownloadBabelioWorker(title, authors, ids)
             # babelio_worker = DownloadBabelioWorker(title,authors)
             new_notes = babelio_worker.notes
             new_votes = babelio_worker.votes

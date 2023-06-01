@@ -8,7 +8,10 @@ __license__   = 'GPL v3'
 __copyright__ = 'Louis Richard Pirlet based on Christophe work'
 __docformat__ = 'restructuredtext en'
 
-import time, re
+import urllib                                   # to access the web
+from bs4 import BeautifulSoup as BS             # to dismantle and manipulate HTTP (HyperText Markup Language)
+#import sys                                      # so I can access sys (mainly during development, probably useless now)
+import time, datetime
 from urllib.parse import quote
 
 from lxml.html import fromstring, tostring
@@ -20,28 +23,109 @@ from calibre.ebooks.metadata.sources.base import Source
 from calibre.utils.cleantext import clean_ascii_chars
 from calibre.utils.localization import get_udc
 
+from calibre.ebooks.metadata.sources.search_engines import rate_limit
 from calibre import prints
 from calibre.constants import DEBUG
 
+TIME_INTERVAL = 1.2      # this is the minimum interval between 2 access to the web (with decorator on ret_soup())
+
+class Un_par_un(object):
+    '''
+    This is a class decorator, cause I am too lazy rewrite that plugin... :),
+    beside I want to learn creating one. Well, granted, dedicated to ret_soup()
+
+    Purpose: execute the decorated function with a minimum of x seconds
+    between each execution, and collect all access time information...
+
+    rate_limit() from calibre.ebooks.metadata.sources.search_engines provides the delay
+    using a locked file containing the access time... maintenance of this resource
+    is hidden in a context manager implementation.
+
+    @contextmanager
+    def rate_limit(name='test', time_between_visits=2, max_wait_seconds=5 * 60, sleep_time=0.2):
+
+    I assume that calibre will wait long enough for babelio plugin (I pushed to 45 sec after first match)
+    '''
+    def __init__(self,fnctn):
+        self.function = fnctn
+        self._memory = []
+
+    def __call__(self, *args, **kwargs):
+        with rate_limit(name='Babelio_notes', time_between_visits=TIME_INTERVAL):
+          # call decorated function: "ret_soup" whose result is (soup,url)
+            result = self.function(*args, **kwargs)
+            self._memory.append((result[1], time.asctime()))
+            return result
+
+    def get_memory(self):
+        mmry = self._memory
+        self._memory = []
+        return mmry
+
+
+def ret_soup(br, url, rkt=None):
+    '''
+    Function to return the soup for beautifullsoup to work on. with:
+    br is browser, url is request address, who is an aid to identify the caller,
+    Un_par_un introduce a wait time to avoid DoS attack detection, rkt is the
+    arguments for a POST request, if rkt is None, the request is GET...
+    return (soup, url_ret)
+    '''
+    if DEBUG:
+        prints("DEBUG In ret_soup(log, dbg_lvl, br, url, rkt=none, who=''\n")
+        prints("DEBUG URL request time : ", datetime.datetime.now().strftime("%H:%M:%S"))
+    start = time.time()
+    if DEBUG:
+        prints("DEBUG br                : ", br)
+        prints("DEBUG url               : ", url)
+        prints("DEBUG rkt               : ", rkt)
+
+    prints("Accessing url     : ", url)
+    if rkt :
+        prints("search parameters : ",rkt)
+        rkt=urllib.parse.urlencode(rkt).encode('ascii')
+        if DEBUG: prints("DEBUG formated parameters : ", rkt)
+
+    try:
+        sr = br.open(url,data=rkt,timeout=30)
+        prints("(ret_soup) sr.getcode()  : ", sr.getcode())
+        if DEBUG:
+            prints("DEBUG url_vrai      : ", sr.geturl())
+            prints("DEBUG sr.info()     : ", sr.info())
+        url_ret = sr.geturl()
+    except urllib.error.URLError as e:
+        prints("exception occured...")
+        prints("code : ",e.code,"reason : ",e.reason)
+        raise Exception('(urlopen_with_retry) Failed while acessing url : ',url)
+    soup = BS(sr, "html5lib")
+
+    # if DEBUG: prints("DEBUG soup.prettify() :\n",soup.prettify())               # hide_it # très utile parfois, mais que c'est long...
+    return (soup, url_ret)
+
+
 class DownloadBabelioWorker(Source):
 
-    def __init__(self, title, authors, bbl_id, timeout=20):
+    def __init__(self, title, authors, ids, timeout=20):
         self.timeout = timeout
         self.notes = None
         self.votes = None
         self.title = title
         self.authors = authors
-        self.bbl_id = bbl_id            # l'idée c'est que si on a babelio_id alors on connais le lvre ET son url
+        self.isbn = ids["isbn"] if "babelio_id" in ids else ""
+        self.bbl_id = ids["babelio_id"] if "babelio_id" in ids else ""
+         # l'idée c'est que si on a babelio_id alors on connais le lvre ET son url
         self.run()
 
     def run(self):
 
         matches = []
         br = browser()
+        query = ""
 
         print("self.title   : {}".format(self.title))
         print("self.authors : {}".format(self.authors))
         print("self.bbl_id  : {}".format(self.bbl_id))
+        print("self.isbn    : {}".format(self.isbn))
 
         if self.bbl_id and "/" in self.bbl_id and self.bbl_id.split("/")[-1].isnumeric():
             matches = ["https://www.babelio.com/livres/" + self.bbl_id]
@@ -127,7 +211,6 @@ class DownloadBabelioWorker(Source):
                     prints("DEBUG response.getcode() : ", response.getcode())
                     prints("DEBUG response.info()    : ", response.info())
                     prints("DEBUG response.geturl()  : ", response.geturl())
-                    prints("DEBUG response.read()           : ", response.read())
 
                 raw = response.read().strip()
                 raw = raw.decode('iso-8859-1', errors='replace')
