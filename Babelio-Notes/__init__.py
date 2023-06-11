@@ -23,7 +23,7 @@ class InterfaceNotesBabelio(InterfaceActionBase):
     name                = 'Babelio Notes'
     description         = 'Recherche note moyenne et votes sur le site de Babelio'
     supported_platforms = ['windows', 'osx', 'linux']
-    author              = 'Christophe'
+    author              = 'Louis Richard Pirlet based on Christophe work'
     version             = (4, 0, 0)
     minimum_calibre_version = (0, 7, 53)
 

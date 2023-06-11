@@ -9,7 +9,7 @@ __copyright__ = 'Louis Richard Pirlet based on Christophe work'
 __docformat__ = 'restructuredtext en'
 
 import urllib                                   # to access the web
-from bs4 import BeautifulSoup as BS             # to dismantle and manipulate HTTP (HyperText Markup Language)
+from bs4 import BeautifulSoup as BS             # to dismantle and manipulate HTTP (HyperText Markup Language) a text formated utf-8
 #import sys                                      # so I can access sys (mainly during development, probably useless now)
 import time, datetime
 from urllib.parse import quote
@@ -51,7 +51,8 @@ class Un_par_un(object):
         self._memory = []
 
     def __call__(self, *args, **kwargs):
-        with rate_limit(name='Babelio_notes', time_between_visits=TIME_INTERVAL):
+        # note : name='Babelio_db' so we interleave with babelio_db would this plugin be used at the same time
+        with rate_limit(name='Babelio_db', time_between_visits=TIME_INTERVAL):
           # call decorated function: "ret_soup" whose result is (soup,url)
             result = self.function(*args, **kwargs)
             self._memory.append((result[1], time.asctime()))
@@ -62,13 +63,13 @@ class Un_par_un(object):
         self._memory = []
         return mmry
 
-
 def ret_soup(br, url, rkt=None):
     '''
     Function to return the soup for beautifullsoup to work on. with:
     br is browser, url is request address, who is an aid to identify the caller,
     Un_par_un introduce a wait time to avoid DoS attack detection, rkt is the
     arguments for a POST request, if rkt is None, the request is GET...
+    soup is the response from the URL, formatted utf-8 (no decode needed)
     return (soup, url_ret)
     '''
     if DEBUG:
@@ -102,6 +103,27 @@ def ret_soup(br, url, rkt=None):
     # if DEBUG: prints("DEBUG soup.prettify() :\n",soup.prettify())               # hide_it # très utile parfois, mais que c'est long...
     return (soup, url_ret)
 
+def ret_clean_text(text):
+    '''
+    For the site search to work smoothly, authors and title needs to be cleaned.
+    we need to remove non significant characters and remove useless space character...
+    '''
+    if DEBUG:
+        prints("DEBUG: In ret_clean_txt(text)\n")
+        prints("DEBUG: text         : ", text)
+
+    txt = lower(get_udc().decode(text))
+
+    for k in [',','.',':','-',"'",'"','(',')','<','>','/']:             # yes I found a name with '(' and ')' in it...
+        if k in txt:
+            txt = txt.replace(k," ")
+    clntxt=" ".join(txt.split())
+
+    if DEBUG:
+        prints("DEBUG: cleaned text : ", clntxt)
+        prints("DEBUG: return text from ret_clean_txt")
+
+    return clntxt
 
 class DownloadBabelioWorker(Source):
 
@@ -122,16 +144,32 @@ class DownloadBabelioWorker(Source):
         br = browser()
         query = ""
 
-        print("self.title   : {}".format(self.title))
-        print("self.authors : {}".format(self.authors))
-        print("self.bbl_id  : {}".format(self.bbl_id))
-        print("self.isbn    : {}".format(self.isbn))
+        prints("self.title   : {}".format(self.title))
+        prints("self.authors : {}".format(self.authors))
+        prints("self.bbl_id  : {}".format(self.bbl_id))
+        prints("self.isbn    : {}".format(self.isbn))
+
+        nknwn = ['Inconnu(e)','Unknown','Inconnu','Sconosciuto','Necunoscut(ă)']   #français, anglais, français(Canada), italien, roman
+        for i in range(len(nknwn)):
+            if self.authors and nknwn[i] in self.authors[0]:
+                self.authors = None
+                if DEBUG: prints("DEBUG: authors Unknown processed : ", self.authors)
+                break
 
         if self.bbl_id and "/" in self.bbl_id and self.bbl_id.split("/")[-1].isnumeric():
             matches = ["https://www.babelio.com/livres/" + self.bbl_id]
-            if DEBUG: prints("DEBUG: bbl_id matches : ", matches)
+            if DEBUG:
+                prints("DEBUG: bbl_id matches : ", matches)
+                prints("DEBUG: babelio identifier trouvé... pas de recherche sur babelio... on saute directement au livre\n")
 
-        if len(matches) == 0:          # on saute au dessus de tout le reste et on trouve les valeurs rating
+        if not matches:          # on saute au dessus de tout le reste et on trouve les valeurs rating
+            query= "https://www.babelio.com/resrecherche.php?Recherche=%s&item_recherche=isbn"%self.isbn
+            if DEBUG:
+                prints("DEBUG: ISBN identifier trouvé, on cherche cet ISBN sur babelio : ", query)
+            soup = ret_soup(br, query)[0]
+            matches = self.parse_search_results(title, authors, soup, br)
+
+        if not matches:          # on saute au dessus de tout le reste et on trouve les valeurs rating
             intab = "àâäéèêëîïôöùûüÿçćåáü"
             outab = "aaaeeeeiioouuuyccaau"
 
@@ -274,6 +312,80 @@ class DownloadBabelioWorker(Source):
         if not q:
             return None
         return '%s%s%s%s%s'%(BASE_URL,au,BASE_URL_MID,q,BASE_URL_LAST)
+
+    def parse_search_results(orig_title, orig_authors, soup, br):
+        '''
+        this method returns "matches".
+        note: if several matches, the first presented in babelio will be the first in the
+        matches list; it will be submited as the first worker... (highest priority)
+        !! CAUTION !! if the number of book discovered is greater than 12, only the 12 most
+        significant will be returned
+        '''
+        prints('In parse_search_results(self, log, orig_title, orig_authors, soup, br)')
+
+        if DEBUG:
+            prints("DEBUG orig_title    : ", orig_title)
+            prints("DEBUG orig_authors  : ", orig_authors)
+
+        BASE_URL = 'https://www.babelio.com'
+
+        unsrt_match, matches = [], []
+        count=0
+        while count < 5 :                                                       # loop over 6 first pages of search result (max 6 request @ 1.6 sec)
+            try:
+                x=soup.select_one('div.mes_livres').select_one('tbody').select('tr')
+            except:
+                break
+            if len(x):                                                          # loop over all html addresses tied with titre_v2 (all book ref)
+                for i in range(len(x)):                                         # !!CAUTION!! each page may have up to 10 books
+                    y = x[i].select_one('td.titre_livre > a.titre_v2')
+                    sous_url = y["href"].strip()
+                    titre = y.text.strip()
+                    ttl=ret_clean_text(log, self.dbg_lvl, titre)
+                    orig_ttl=ret_clean_text(log, self.dbg_lvl, orig_title)
+                    y = x[i].select_one('td.auteur > a.auteur_v2')
+                    auteur=y.text.strip()
+                    aut=ret_clean_text(log, self.dbg_lvl, auteur)
+                    maxi=0
+                    if orig_authors:
+                        for i in range(len(orig_authors)):
+                            orig_authors[i] = ret_clean_text(log, self.dbg_lvl, orig_authors[i])
+                            maxi = max(maxi, (SM(None,aut,orig_authors[i]).ratio()))        # compute and find max ratio comparing auteur presented by babelio to each item of requested authors
+                    else:
+                        orig_authors=[]
+                    unsrt_match.append((sous_url,(SM(None,ttl, orig_ttl).ratio()+maxi)))    # compute ratio comparing titre presented by babelio to requested title
+                    # unsrt_match.append((sous_url,(SM(None,ttl, orig_ttl).ratio()+maxi),titre,orig_title,auteur,orig_authors))   # may be long
+            if not soup.select_one('.icon-next'):                               #
+                break                                                           # exit loop if no more next page
+            count = count + 1                                                   #
+            nxtpg = BASE_URL + soup.select_one('.icon-next')["href"]    # get next page adress
+            if DEBUG:
+                prints("DEBUG next page : ",nxtpg)                            #
+            soup=ret_soup(log, self.dbg_lvl, br, nxtpg)[0]               # get new soup content and loop again, request MUST take at least 1 second
+            time.sleep(0.5)                                                     # but wait a while so as not to hit www.babelio.com too hard
+
+        srt_match = sorted(unsrt_match, key= lambda x: x[1], reverse=True)      # find best matches over the orig_title and orig_authors
+
+        prints('nombre de références trouvées dans babelio', len(srt_match))
+        # if DEBUG:                                                                          # hide_it # may be long
+        #     for i in range(len(srt_match)): log.info('srt_match[i] : ', srt_match[i])      # hide_it # may be long
+
+        srt_match = srt_match[:12]                                              # limit to 12 requests (max 12 requests @ #workers sec)
+        for i in range(len(srt_match)):
+            matches.append(BASE_URL + srt_match[i][0])
+
+        if not matches:
+            if DEBUG:
+                prints("DEBUG matches at return time : ", matches)
+            return None
+        else:
+            prints("nombre de matches : ", len(matches))
+            if DEBUG:
+                prints("DEBUG matches at return time : ")
+                for i in range(len(matches)):
+                    prints("      ", matches[i])
+
+        return matches
 
     def _parse_search_results(self, root, matches):
         '''
