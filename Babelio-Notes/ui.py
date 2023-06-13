@@ -22,7 +22,7 @@ import time, datetime
 from urllib.parse import quote
 
 from lxml.html import fromstring, tostring
-from calibre import browser
+from calibre import browser                     # broser is mechanize
 
 from calibre import as_unicode
 from calibre.utils.icu import lower
@@ -31,6 +31,7 @@ from calibre.utils.cleantext import clean_ascii_chars
 from calibre.utils.localization import get_udc
 
 from calibre.ebooks.metadata.sources.search_engines import rate_limit
+from calibre.gui2 import warning_dialog, error_dialog, question_dialog, info_dialog, show_restart_warning
 
 
 
@@ -134,9 +135,6 @@ def ret_clean_text(text):
 
     return clntxt
 
-
-#################################################################
-
 class InterfaceBabelioNotes(InterfaceAction):
 
     name = 'Babelio Notes'
@@ -176,7 +174,7 @@ class InterfaceBabelioNotes(InterfaceAction):
         match the current metadata in the database.
         '''
 
-        from calibre.gui2 import error_dialog, info_dialog
+
 
         # Get currently selected books
         rows = self.gui.library_view.selectionModel().selectedRows()
@@ -199,11 +197,10 @@ class InterfaceBabelioNotes(InterfaceAction):
             authors = mi.authors
             ids = mi.get_identifiers()
             if DEBUG:
-                prints("+-"*40)
+                prints("\nDEBUG "+(4*"+- Babelio Notes +-"))
                 prints("DEBUG: ids : {}".format(ids))
 
-            babelio_worker = DownloadBabelioWorker(title, authors, ids)
-            # babelio_worker = DownloadBabelioWorker(title,authors)
+            babelio_worker = DownloadBabelioWorker(self.gui, ids)
             new_notes = babelio_worker.notes
             new_votes = babelio_worker.votes
             trouvebaby = 'Y'
@@ -231,20 +228,15 @@ class InterfaceBabelioNotes(InterfaceAction):
                 'Recherche note et votes sur le site Babelio pour %d livre(s)'%len(book_ids),
                 show=True)
 
-
-        #######################################################################################
-
 class DownloadBabelioWorker(Source):
 
-    def __init__(self, title, authors, ids, timeout=20):
+    def __init__(self, gui, ids, timeout=20):
         self.timeout = timeout
+        self.gui = gui
+        self.bbl_id = ids["babelio_id"] if "babelio_id" in ids else ""      # l'idée c'est que si on a babelio_id alors on connais le lvre ET son url
         self.notes = None
         self.votes = None
-        self.title = title
-        self.authors = authors
-        self.isbn = ids["isbn"] if "babelio_id" in ids else ""
-        self.bbl_id = ids["babelio_id"] if "babelio_id" in ids else ""
-         # l'idée c'est que si on a babelio_id alors on connais le lvre ET son url
+
         self.run()
 
     def run(self):
@@ -253,106 +245,20 @@ class DownloadBabelioWorker(Source):
         br = browser()
         query = ""
 
-        prints("self.title   : {}".format(self.title))
-        prints("self.authors : {}".format(self.authors))
         prints("self.bbl_id  : {}".format(self.bbl_id))
-        prints("self.isbn    : {}".format(self.isbn))
-
-        nknwn = ['Inconnu(e)','Unknown','Inconnu','Sconosciuto','Necunoscut(ă)']   #français, anglais, français(Canada), italien, roman
-        for i in range(len(nknwn)):
-            if self.authors and nknwn[i] in self.authors[0]:
-                self.authors = None
-                if DEBUG: prints("DEBUG: authors Unknown processed : ", self.authors)
-                break
 
         if self.bbl_id and "/" in self.bbl_id and self.bbl_id.split("/")[-1].isnumeric():
             matches = ["https://www.babelio.com/livres/" + self.bbl_id]
             if DEBUG:
                 prints("DEBUG: bbl_id matches : ", matches)
                 prints("DEBUG: babelio identifier trouvé... pas de recherche sur babelio... on saute directement au livre\n")
+        else:
+            return error_dialog(self.gui, "Babelio Notes", "Babelio_id ("+ self.bbl_id +") absent ou invalide, veuillez le charger avec le plugin Babelio_db", show=True)
 
-        if not matches:          # on saute au dessus de tout le reste et on trouve les valeurs rating
-            query= "https://www.babelio.com/resrecherche.php?Recherche=%s&item_recherche=isbn"%self.isbn
-            if DEBUG:
-                prints("DEBUG: ISBN identifier trouvé, on cherche cet ISBN sur babelio : ", query)
-            soup = ret_soup(br, query)[0]
-            matches = self.parse_search_results(title, authors, soup, br)
-
-        if not matches:          # on saute au dessus de tout le reste et on trouve les valeurs rating
-            intab = "àâäéèêëîïôöùûüÿçćåáü"
-            outab = "aaaeeeeiioouuuyccaau"
-
-            title = self.title
-            title = title.lower()
-            trantab = title.maketrans(intab, outab)
-            title = title.translate(trantab)
-            title = title.replace('œ','oe')
-            print(('title %s' %title))
-
-            authors = []
-            for author in self.authors:
-                author = author.lower()
-                trantab = author.maketrans(intab, outab)
-                author = author.translate(trantab)
-                author = author.replace('œ','oe')
-                authors.append(author)
-                print(('author %s' %author))
-            print(('authors %s' %authors))
-
-            if not query:
-                query = self.create_query(title=title, authors=authors)
-            # execption levée dans quelques cas http error 403 : Forbidden
-            try:
-                response = br.open_novisit(query, timeout=self.timeout)
-            except:
-                return None
-            try:
-                raw = response.read().strip()
-                raw = raw.decode('iso-8859-1', errors='replace')
-                #print('raw %s' %raw)
-                root = fromstring(clean_ascii_chars(raw))
-            except:
-                return None
-            try:
-                self._parse_search_results(root, matches)
-            except:
-                print('erreur parse')
-                return None
-                raise
-            print('avant notice titre + auteur')
-
-        if len(matches) == 0:
-            print('liste vide pour recherche titre + auteur => recherche à parir du titre')
-            # recherche à partir du titre seul
-            query = self.create_query(title=title)
-            print(('query %s' %query))
-            try:
-                response = br.open_novisit(query, timeout=self.timeout)
-            except:
-                return None
-            try:
-                raw = response.read().strip()
-                raw = raw.decode('iso-8859-1', errors='replace')
-                root = fromstring(clean_ascii_chars(raw))
-            except:
-                return None
-            try:
-                print(('authors pour titre %s' %authors))
-                first_author = authors[0]
-                print ('first_author %s' %first_author)
-                self._parse_search_results_titre(root, matches, first_author)
-            except:
-                print('erreur parse titre')
-                return None
-                raise
-
-            print('avant notice titre seul')
-
-        # si notices trouvées avec titre + auteur ou titre seul
         if len(matches) > 0:                                 # ok laisse ainsi maintenant... MAIS len doit etre 1 et suelement 1 simon on melange des livres
             save_vote = 0
             for notice in matches:
-                print(('notice %s' %notice))
+                prints(('DEBUG notice %s' %notice))
                 response = br.open_novisit(notice, timeout=self.timeout)
                 if DEBUG:
                     prints("DEBUG response.getcode() : ", response.getcode())
@@ -367,7 +273,7 @@ class DownloadBabelioWorker(Source):
                 #ne conserver que les votes les plus élevés
                 if vote:
                     votes_notice = vote[0].text_content().strip()
-                    print(('votes_notice %s' %votes_notice))
+                    prints(('DEBUG votes_notice %s' %votes_notice))
                     votes_float = float(votes_notice)
                     if votes_float > save_vote:
                         self.votes = votes_notice
@@ -379,48 +285,6 @@ class DownloadBabelioWorker(Source):
                         print(('self.notes %s' %self.notes))
                 else:
                     print('votes non trouvés')
-
-
-    def create_query(self, title=None, authors=None):
-        '''
-        create_query build and returns an URL with purpose of researching babelio
-        with a book title and first author (author may be empty)
-        '''
-
-        BASE_URL = 'http://www.babelio.com/resrecherche.php?Recherche='
-        BASE_URL_MID = '+'
-        BASE_URL_LAST = '&page=1&item_recherche=livres&tri=auteur'
-
-        q = ''
-        au = ''
-
-        if title:
-            #title = get_udc().decode(title)
-            title_tokens = list(self.get_title_tokens(title,
-                                strip_joiners=False, strip_subtitle=True))
-            if title_tokens:
-                print(('title_tokens %s' %title_tokens))
-                try:
-                    tokens = [quote(t.encode('iso-8859-1') if isinstance(t, str) else t) for t in title_tokens]
-                    q='+'.join(tokens)
-                except:
-                    return None
-
-        if authors:
-            #authors = [get_udc().decode(a) for a in authors]
-            author_tokens = self.get_author_tokens(authors,
-                    only_first_author=True)
-            if author_tokens:
-                print(('author_tokens %s' %author_tokens))
-                try:
-                    tokens = [quote(t.encode('iso-8859-1') if isinstance(t, str) else t) for t in author_tokens]
-                    au='+'.join(tokens)
-                except:
-                    return None
-
-        if not q:
-            return None
-        return '%s%s%s%s%s'%(BASE_URL,au,BASE_URL_MID,q,BASE_URL_LAST)
 
     def parse_search_results(orig_title, orig_authors, soup, br):
         '''
@@ -475,7 +339,7 @@ class DownloadBabelioWorker(Source):
 
         srt_match = sorted(unsrt_match, key= lambda x: x[1], reverse=True)      # find best matches over the orig_title and orig_authors
 
-        prints('nombre de références trouvées dans babelio', len(srt_match))
+        prints('DEBUG nombre de références trouvées dans babelio', len(srt_match))
         # if DEBUG:                                                                          # hide_it # may be long
         #     for i in range(len(srt_match)): log.info('srt_match[i] : ', srt_match[i])      # hide_it # may be long
 
@@ -495,94 +359,3 @@ class DownloadBabelioWorker(Source):
                     prints("      ", matches[i])
 
         return matches
-
-    def _parse_search_results(self, root, matches):
-        '''
-        _parse_search_results scans the results of the search and
-        add all books to the list named matches
-        '''
-
-        BASE_URL0 = 'http://www.babelio.com'
-        print('parse')
-        results = root.xpath('//*[@class="mes_livres"]/table/tbody/tr/td[1]')
-        print(('results %s' %results))
-        if not results:
-            print('not results')
-            return
-        for result in results:
-           print('in results')
-           result_url=result.xpath('a/@href')
-           print(('result_url %s' %result_url))
-           matches.append( '%s%s'%(BASE_URL0,result_url[0]))
-           print(('matches : %r' %matches))
-        print('fin parse')
-
-    def _parse_search_results_titre(self, root, matches, first_author):
-
-        BASE_URL0 = 'http://www.babelio.com'
-        print('parse titre')
-        print ('first_author %s' %first_author)
-        br = browser()
-
-        ind_page = 1
-        while ind_page < 4:
-            if len(matches) > 0:
-                break
-            else:
-                auteurs = root.xpath('//*[@class="mes_livres"]/table/tbody/tr/td[3]')
-                print(('auteurs %s' %auteurs))
-                if not auteurs:
-                    print('not auteurs titre')
-                    return
-
-                intab = "àâäéèêëîïôöùûüÿçćåáü"
-                outab = "aaaeeeeiioouuuyccaau"
-
-                i = 0
-                indice = -1
-                for auteur in auteurs:
-                   print('in auteurs')
-                   nom_auteur=auteur.xpath('a/text()')
-                   aut=nom_auteur[0].strip().lower()
-                   trantab = aut.maketrans(intab, outab)
-                   aut = aut.translate(trantab)
-                   aut = aut.replace('œ','oe')
-                   print(('nom_auteur %s' %aut))
-                   if aut == first_author:
-                     print('auteur trouvé')
-                     indice=i
-                     print('indice %s' %indice)
-                     break
-                   i=i+1
-
-                results = root.xpath('//*[@class="mes_livres"]/table/tbody/tr/td[1]')
-                i = 0
-                for result in results:
-                   print('in results titre')
-                   result_url=result.xpath('a/@href')
-                   print(('result_url titre %s' %result_url))
-                   print('indice %s' %indice)
-                   if i == indice:
-                      matches.append( '%s%s'%(BASE_URL0,result_url[0]))
-                      print(('matches titre : %r' %matches))
-                      break
-                   i=i+1
-
-            ind_page = ind_page + 1
-            print(('ind_page %s' %ind_page))
-            if len(matches) == 0:
-                #page_next = root.xpath('//*[@id="page_corps"]/div/div[4]/div[2]/a[8]/@href')
-                page_next = root.xpath('//div[@class="pagination row"]/a[@class="fleche icon-next"]/@href')
-                print(('page_next %s' %page_next))
-                if page_next:
-                    page = BASE_URL0 + page_next[0]
-                    print(('page %s' %page))
-                    response = br.open_novisit(page)
-                    raw = response.read().strip()
-                    raw = raw.decode('iso-8859-1', errors='replace')
-                    root = fromstring(clean_ascii_chars(raw))
-                else:
-                    return
-
-        print('fin parse titre seul')
-
