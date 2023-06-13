@@ -1,0 +1,73 @@
+Important:
+  la présence d'un nsfr_id valide exclu tout autre choix et va directement a la page correspondante du volume. C'est LE moyen de contourner tous les choix en indiquant
+    comme id : nsfr_id:vl$xxx où xxx est le numéro, positif ou négatif, de la page du volume désiré.
+  la présence d'un isbn valide, en l'absence d'un nsfr_id, va directement a la page correspondante du livre, les choix posés seront pris en considération.
+  l'absence de nsfr_id valide ou d'un isbn valide implique que, et l'auteur et le titre sont, quasi, correct.
+    L'auteur doit être de la forme: "prénom nom" ou bien "nom, prénom" (noter la virgule dans ce dernier cas)...
+    Un maximum est fait pour tenir compte d'une faute légère dans l'orthographe de l'auteur tant que celle du titre.
+      En particulier, la casse et/ou les accents ne sont pas pris en compte.
+
+pour utiliser ce plugin efficacement:
+  sélectionner le ou les ouvrages
+  éditer les métadonnées (clic droit)
+    Dans cette fenêtre activer l'icône "tournevis et clé plate" à coté de télécharger les métadonnées
+      Dans la fenêtre de configuration
+        décocher toutes les sources sauf noosfere DB (pas nécessaire mais utile surtout au début)
+        clic de sélection sur noosfere DB
+        activer "configurer la source sélectionnée"
+        champs de métadonnées à télécharger:  cocher tout
+          Ajoute collection et son numéro d'ordre au champ éditeur:  (voir LIS-MOI editeur_collection_seriel-code)
+          verbosité du journal de 0 à 7 : 7 minimum pour créer un rapport en cas de mauvais fonctionnement
+          Priorité de tri: le plus ancien ou le plus recent parmi les volumes selectionnés
+          ISBN present si possible: oui ou non
+          choix du volume pondéré: oui ou non
+          Impose un éditeur: l'algorithme de choix se fait uniquement avec cet éditeur (correspondance exacte),
+            avec l'editeur prépondérant (texte sans correspondance),
+            ou sans tenir compte de l'éditeur (pas de texte).
+          Ajoute 'Prix obtenus' et 'Prix obtenus par des textes au sommaire: cocher pour ajouter cette information
+          Ajoute Cité dans les pages thématiques suivantes: cocher pour ajouter cette information
+          Ajoute Cité dans les listes thématiques des oeuvres suivantes: cocher pour ajouter cette information
+          Ajoute Cité dans les Conseils de lecture: cocher pour ajouter cette information
+          Ajoute Adaptations (cinéma, télévision, BD, théâtre, radio, jeu vidéo...): cocher pour ajouter cette information
+
+ Note
+"Restaurer les valeurs par défaut" est inactif et dépend de calibre plutôt que du plugin
+
+          Enregistrer ou Annuler pour revenir a la fenêtre précédente
+        Annuler ou Appliquer pour sortir de la configuration et revenir à la fenêtre de téléchargement
+      Télécharger les métadonnées
+      cliquer "ok" (même si les données, ou la couverture, correspondent à un autre volume...)
+      On sort du plugin...
+
+  vous êtes au premier niveau de calibre, les liens peuvent être suivis dans les "détails du livre" (a choisir par "mise en page")
+  Si un autre volume est désiré, cliquer sur "Autre édition" pour voir tous les volumes, sur un lien sous "autres édition" pour une édition particulière
+  suivre les liens de noosfere jusqu'à l'édition désirée, repérer dans l'adresse de la page et copier le nombre (positif ou négatif) associé avec numlivre.
+  sélectionner l'ouvrage dont on cherche les métadonnées, "Editer les métadonnées(un livre à la fois)".
+  Dans le champ Ids, remplacer nsfr_id:<n'importe quoi> par nsfr_id:vl$<coller ici le nombre copié>
+   exemple: nsfr_id:bk$1617$vl$2146558555 devient nsfr_id:vl$2146597675
+  "télécharger les métadonnées"
+
+Choix du volume:
+le choix du volume est déterminé par une série de facteurs... la "priorité de tri" influence le choix mais ne le détermine pas.
+"impose un éditeur" limite l'algorithme de choix a l'éditeur pour autant que l'éditeur imposé soit une correspondance exacte,
+majuscule, minuscule et accents y compris. Je suggère un couper-coller.
+
+extrait des sources, une explication de l'algorithme de choix du volume.
+    def ret_top_vol_indx(self, url, book_title):
+        # cette fonction reçoit l'URL du livre qui contient plusieurs volumes du même auteur,
+        # dont certains ont le même ISBN et généralement le même titres.
+        #
+        # Ces volumes diffèrent par l'éditeur, la date d'édition ou de réédition, l'image de couverture, le 4me de couverture, la critique.
+        # MON choix se base sur un système de points sur les indications du site
+        # résumé présent:                       r   1pt
+        # critique présente:                    c   1pt         # semble pas trop correct car CS n'existe pas même si, quand
+        # critique de la série                  cs  1pt         # une critique existe, elle est parfois reprise pour tous les volumes
+        # sommaire des nouvelles présentes:     s   1pt
+        # information vérifiée                  v   2pt
+        # titre identique                       t   5pt
+        # image présente                        p   1pt
+        # isbn présent                          i  50pt         fonction de with_isbn
+        # isbn présent et identique a calibre     100pt         fonction de with_isbn
+        # le nombre de point sera  augmenté de telle manière a choisir le volume chez l'éditeur le plus représenté... MON choix
+        # en cas d'égalité, le plus ancien reçoit la préférence sauf préférence
+        #

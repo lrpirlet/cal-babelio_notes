@@ -1,0 +1,85 @@
+﻿<body> <h1><u>Le plugin <b>noosfere_util</b></u></h1>  <p>Ce plugin devrait compléter cal-noosfere.</p><h2>Problèmes dans&nbsp;noosfere :</h2><p> </p><ol><li>Cal-noosfere ne peut pas effacer un nouveau champ de métadonnées vide.<br/>Exemple : si un téléchargement de la source de métadonnées, venant de n'importe où, a mis la série à &quot;quelque chose&quot;, et que la source de métadonnées noosfere ne trouve AUCUNE série, alors calibre n'effacera PAS le champ série.</li>
+			<li>Un livre peut exister sous plusieurs volumes.<br/>Chacun d'eux peut différer en raison d'une réédition par le même éditeur ou par un éditeur différent. Il peut même faire partie d'une ou plusieurs anthologies avec éventuellement un auteur et/ou un titre et/ou un ISBN différent. J'ai fait un choix mais ce n'est peut-être PAS le meilleur. La solution est d'aller manuellement sur la page du livre et de choisir le meilleur volume en définissant le nsfr_id, et en redémarrant le plugin source de métadonnées cal-noosfere.
+&nbsp;	&nbsp;&nbsp;</li><li>Cal-noosfere ne permet pas de modifier la colonne personnalisée.<div>Cependant, il permet de surcharger le champ éditeur avec la collection et l'index de la collection. Il devient alors nécessaire de diviser ces informations en colonnes personnalisées.</div>
+
+			</li></ol><p>Ainsi, sélectionnez dans calibre quelques livres pertinents dont le volume (l'édition) affiché est incorrect.</p>
+		<ul><li>Utilisez noosfere_util pour effacer leurs métadonnées, à l'exception du titre, des auteurs et des identifiants tels que l'ISBN, et pour ajouter l'identifiant nsfr_id du volume de votre choix.</li>
+			<li>Exécutez une mise à jour des métadonnées pour alimenter calibre avec les informations associées à votre choix.</li>
+			<li>Sélectionnez les livres pertinents dont le champ éditeur est surchargé. Utilisez noosfere_util pour configurer l'éditeur et la collection d'éditeurs personnalisés et la série de collections personnalisées.</li></ul><h2>Mode d'emploi</h2>
+	<h3>Efface les métadonnées en surplus</h3>
+	<ul><li>Sélectionnez un ou une série de livres dans calibre.</li>
+		<li>Appelez noosfere_util en actionnant l'icône.</li>
+		<li>Dans le menu déroulant activez &quot;Efface les métadonnées en surplus&quot;.</li></ul><p>Les lignes sélectionnées ont perdu toutes les informations relatives aux champs Editeur, Série, Langues, date de modification, nsfr_id et les champs personnalisés contenant la collection définie par l'éditeur ainsi que son numéro de série (#collection et #coll_srl tels que définis par défaut). Notez que cette étape est inutile si l’intention est d’utiliser le &quot;navigateur Web pour le choix du volume&quot;</p>
+	<h3>Navigateur Web pour le choix du volume</h3>
+	<ul><li>Sélectionnez un ou une série de livres dans calibre.</li>
+		<li>Appelez noosfere_util en actionnant l'icône.</li>
+		<li>Dans le menu déroulant activez &quot;Navigateur Web pour le choix du volume&quot;</li>
+		<li>Un navigateur web apparait et présente la page de recherche avancée de noosfere</li>
+		<li>A l'aide du navigateur et des boutons dédiés, naviguer vers l'édition du titre désiré&nbsp;</li>
+		<li>Sortir du navigateur en utilisant le bouton bleu en haut à gauche pour enregistrer le choix</li>
+		<li>Dans calibre, toutes les lignes traitées sont sélectionnée pour téléchargement des métadonnées</li>
+		</ul><p>Les lignes sélectionnées sont marquées et sélectionnées. Il suffit de lancer le téléchargement des données pour obtenir les métadonnées correspondantes au choix. En fait, les lignes sélectionnées ont perdu toutes les informations relatives aux champs Editeur, Série, Langues, date de modification, ISBN et les champs personnalisés contenant la collection définie par l'éditeur ainsi que son numéro de série. (#collection et #coll_srl tels que définis chez moi). Le nsfr_id est défini, il sert de guide au choix.</p>
+
+	<pre>Je me sers de ce navigateur ainsi:
+J’active l'un des ISBN, Auteurs ou titre.
+J'active &quot;Envoyer&quot;. J'observe la zone de titre...
+Quand la page correspondante est affichée, je recherche, si besoin, le titre ou l'auteur...
+Je navigue vers l'édition que je veux.
+Je valide par la flèche de sortie si je suis content,
+	ou bien je sors par esc pour annuler le changement sur cette ligne,
+	ou encore je ferme la fenêtre par le signe X pour laisser tomber cette ligne et toutes les autres suivantes sélectionnées.
+Dans calibre, je démarre le téléchargement des métadonnées, je sélectionne noosfere DB comme seule source de métadonnées et je lance le processus...
+</pre><p>Note:&nbsp;</p>
+	<ul><li>on présume que noosfere DB est installé</li>
+		<li>le navigateur est programmé pour être au-dessus de calibre, l'accès à celui-ci n'est possible qu'après fermeture de toutes les instances de ce navigateur. Pour sortir en vitesse et annuler toutes les lignes suivantes, agir sur le bouton x de la fenêtre.</li>
+		<li>Chaque bouton et chaque boite est commenté dans des bulles ou dans la zone de titre (observez celui-ci quand on charge une page), des indications peuvent apparaitre dans la zone d'état en bas de page.</li>
+
+		</ul><h4>Navigateur web, un instantané...</h4><figure>
+    <img alt="noosfere util web 075" title="noosfere util web 075" src="file:./noosfere_util_web_075.png"/>
+
+  </figure>
+	<ul><li>Titre et zone de contrôle de la fenêtre : <ul><li>titre : contient la dénomination de la page web, ou bien montre le progrès du chargement de la page</li>
+				<li>Signe - : réduit la fenêtre (attention, ne donne PAS accès à calibre)</li>
+				<li>Signe carré : agrandit la fenêtre</li>
+				<li>Signe X : stoppe le traitement de la ligne et de toutes les lignes suivantes</li>
+				</ul></li><li>Barre de navigation:<ul><li>Flèche à gauche : recule à la page précédente (si elle existe)</li>
+				<li>Flèche à droite: avance à la page suivante (si elle existe)</li>
+				<li>Flèches circulaires : recharge la page</li>
+				<li>Maison : va à la page de recherche avancée de noosfere</li>
+				<li>X : stoppe le chargement</li>
+				<li>Loupe : invoque le recherche (ctrl-f est fonctionnel)</li>
+				<li>Boite de l'adresse, éditable, on peut aller n'importe où... (attention, sécurité non garantie, ce web browser n'a AUCUNE SECURITE INTEGREE!!!)</li>
+				<li>Esc : stoppe le traitement de la ligne et passe à la ligne suivante</li>
+				<li>Flèche de sortie : enregistre le nsfr_id et passe à la ligne suivante</li>
+				</ul></li><li>Partie centrale : contenu de la page dont l'url est dans la boite de l'adresse... ici la page de recherche avancée &nbsp;de noosfere</li>
+		<li>Zone de trois barres d'information:<ul><li>Bouton ISBN : copie le contenu de la boite ISBN dans la boite de recherche de noosfere, coche la case &quot;Livres&quot;, tant que l'adresse de la page est https://www.noosfere.org/livres/noosearch.asp</li>
+				<li>Boite ISBN : contient le ISBN tel que défini dans calibre avant traitement</li><li>bouton Auteurs : copie le contenu de la boite Auteurs dans la boite de recherche de noosfere, coche la case &quot;Auteurs&quot;, tant que l'adresse de la page est https://www.noosfere.org/livres/noosearch.asp</li>
+				<li>Boite Auteurs : contient le(s) Auteur(s) tel(s) que défini(s) dans calibre avant traitement</li>
+				<li>Bouton Titre : copie le contenu de la boite Titre dans la boite de recherche de noosfere, coche la case &quot;Livres&quot;, tant que l'adresse de la page est https://www.noosfere.org/livres/noosearch.asp</li>
+				<li>Boite Titre : contient le Titre tel que défini dans calibre avant traitement</li>
+				</ul></li><li>Barre de recherche, activée par la loupe ou &lt;ctrl&gt;f:<ul><li>boite qui contient le texte à rechercher (exemple: je copie le titre et le colle ici). La recherche démarre quand le texte change</li>
+				<li>Suivant : recherche une occurrence suivante</li>
+				<li>Précédent : recherche une occurrence précédente</li>
+				<li>Terminé : efface la boite de recherche et ferme la barre de recherche</li>
+				</ul></li><li>&nbsp;zone de statut : <ul><li>Affiche un message si aucune occurrence n'existe.</li>
+				<li>Affiche une barre de progrès et un pourcentage pour monitorer le download (attention, &nbsp;l’indication dans le titre est plus correct!... Non je ne peux pas 'fixer ça')</li></ul></li>
+
+
+
+
+
+		</ul><div> <h3>Distribue l'information (qui surcharge le champ) éditeur</h3>
+		<p>Dans la mesure où le plugin noosfere DB aura été utilisé pour télécharger les métadonnées avec l'option de surcharger le champ éditeur, les lignes sélectionnées seront traitées. En résultat, le champ éditeur contiendra l'éditeur, le champ collection de l'éditeur (par défaut <u>collection</u>) sera rempli et le champ du code de série dans la collection de l'éditeur (par défaut <u>coll_srl</u>) contiendra sa valeur.</p>
+		<p>Notez que si la <u>collection</u> et/ou le <u>coll_srl</u> n'existe pas dans le champ éditeur, la procédure devrait fonctionner. C'est la procédure qui dans noosfere DB est manuelle.</p>
+		</div><div> <h3>Personnalise l'extension</h3>
+		<p>La seule fonction de &quot;Personnalise l'extension&quot; est de créer et/ou de choisr une colonne qui convient...</p>
+		<p>Au premier emploi de ce noosfere_util, il faudra probablement créer 2 colonnes et choisir les colonnes. Cette opération implique un redémarrage de calibre.</p>
+		</div><h2>En cas de bug</h2>
+	<p>noosfere_util crée des fichiers de log en mode&nbsp;debug, et laisse trainer deux fichiers dans le directory temporaire. Il est important de joindre ces informations à tout rapport d'erreur.</p>
+	<p>Lancer calibre avec<i>&nbsp;calibre-debug -g </i> dans un terminal. Reproduire le problème, copier coller le contenu du terminal dans un fichier texte... avant de relancer calibre, copier tout les fichiers du directory temporaire (linux : <b>/tmp</b>; Windows : <b>%temp%</b>) qui commencent par nsfr_utl. Soumettre ces 3 fichiers avec une description du problème.</p>
+	<h3>Astuces</h3>
+	<p>Ne pas utiliser noosfere DB en même temps que d'autres source de métadonnées pour un bon résultat final. En pratique, le résultat peut être différent de noosfere. En effet, calibre peut utiliser plusieurs sources de métadonnées pour &quot;un meilleur résultat&quot;.&nbsp;</p>
+	<p>Personnellement, je commence par rechercher un titre avec un maximum de sources de métadonnée. Ceci me donne plusieurs ID, des notes d'appréciation, des étiquettes variées, mais aussi des séries inventées de toutes pièces, ou des titres de livre qui sont en fait une série (exemple: <i>Celle qui sait</i> de <i>Laurence Suhner</i> -<i>isbn:9791036000911, amazon_fr:B096HPZLTQ, google:hIzSzgEACAAJ, nsfr_id:vl$2146624523</i>- voir <a href="https://www.l-atalante.com/catalogue/La%20Dentelle%20du%20Cygne/celle-qui-sait-9791036000911/">Celle qui sait | Éditions L'Atalante (l-atalante.com)</a>). En fait noosfere est correct.</p>
+	<p>Ensuite, avec noosfere_util, j'efface les métadonnées en surplus, je sélectionne l'édition par le navigateur web pour le choix du volume qui me fixe le nsfr_id correspondant, je télécharge les métadonnées avec noosfere DB seul, puis je distribue les informations surchargées dans le champ éditeur...</p>
+	<p>Enfin, je peux rechercher une meilleur image de couverture en utilisant toute les sources de couvertures... (je ne télécharge QUE les couvertures)</p>
+	<p></p></body>

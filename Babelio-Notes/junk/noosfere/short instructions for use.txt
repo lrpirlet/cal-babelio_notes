@@ -1,0 +1,71 @@
+Important:
+  the presence of a valid nsfr_id excludes any other choice and goes directly to the corresponding page of the volume. This is THE way to bypass all choices by indicating
+    as id: nsfr_id:vl$xxx where xxx is the number, positive or negative, of the page of the desired volume.
+  the presence of a valid isbn, in the absence of an nsfr_id, goes directly to the corresponding page of the book, the choices made will be taken into consideration.
+  the absence of a valid nsfr_id or a valid isbn implies that both the author and the title are almost correct.
+    The author must be of the form: "first name last name" or "last name, first name" (note the comma in the latter case)...
+    A maximum is made to take into account a slight mistake in the spelling of the author as well as that of the title.
+      In particular, case and/or accents are not taken into account.
+
+To use this plugin efficiently:
+  select the book(s)
+  edit the metadata (right click)
+    In this window activate the "screwdriver and spanner" icon next to upload metadata
+      In the configuration window
+        uncheck all sources except noosfere DB (not necessary but useful especially at the beginning)
+        click on noosfere DB
+        activate "configure the selected source".
+        metadata fields to upload: check all
+          Add collection and its order number to the editor field: (see LIS-MOI editeur_collection_seriel-code)
+          Log verbosity from 0 to 7: 7 minimum to create a report in case of malfunction
+          Sorting priority: see below choice of volume.
+          Imposes an editor: the selection algorithm is only done with this editor (exact match)
+          Adds 'Prizes obtained' and 'Prizes obtained by texts' to the table of contents: check to add this information
+          Adds 'Cited' in the following thematic pages: check to add this information
+          Adds Cited in the following thematic lists of works: check to add this information
+          Adds Citation in the Reading Tips: check to add this information
+          Add Adaptations (cinema, television, comics, theatre, radio, video games...): tick to add this information
+
+ Note
+"Restore defaults" is inactive and depends on calibre rather than the plugin
+
+          Save or Cancel to return to the previous window
+        Cancel or Apply to exit the configuration and return to the upload window
+      Upload the metadata
+      click "ok" (even if the data, or the coverage, correspond to another volume...)
+      You exit the plugin...
+
+  you are at the first level of the caliber, the links can be followed in the "book details" (to be chosen by "page layout")
+  If another volume is desired, click on "Other edition" to see all volumes, on a link under "other edition" for a particular edition
+  follow the links in noosfere to the desired edition, find in the page address and copy the number (positive or negative) associated with book number.
+  select the book whose metadata you are looking for, "Edit metadata (one book at a time)".
+  In the Ids field, replace nsfr_id:<anything> with nsfr_id:vl$<paste the number copied here>.
+   example: nsfr_id:bk$1617$vl$2146558555 becomes nsfr_id:vl$2146597675
+  "download metadata"
+
+Choice of volume:
+volume choice is determined by a series of factors... "sort priority" influences the choice but does not determine it.
+"imposes a publisher" limits the choice algorithm to the publisher as long as the imposed publisher is an exact match,
+including upper and lower case and accents. I suggest a cut and paste.
+
+From the sources, an explanation of the volume selection algorithm.
+    def ret_top_vol_indx(self, url, book_title):
+        # This gets the book's URL, there many volume may be present with (or not) same ISBN, same title.
+        # if the book only has one volume, then we bypass ret_top_vol_indx
+        #
+        # the volumes are different by the publisher, edition's or re-edition's date, cover, resume, critic...
+        # MY choice is based on a point system based on the site's flag
+        # resume available:                     r   1pt
+        # critic available:                     c   1pt         # maybe incorrect as sometimes, when a critic exists
+        # series critic:                        cs  1pt         # it is distributed to all volume without indication
+        # summary of novel in the book:         s   1pt
+        # verified information                  v   2pt
+        # same title as requested               t   5pt
+        # cover available                       p   1pt
+        # isbn available                        i  50pt         depending on with_isbn
+        # isbn available and same as calibre      100pt         depending on with_isbn
+        # the score will be increased so that the volume will be chosen to the most present publisher ... MY choice
+        # in case of equality the oldest win
+        #
+
+Translated with www.DeepL.com/Translator (free version)

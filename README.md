@@ -1,69 +1,52 @@
-# Le site de Babelio
+﻿# Le site de Babelio
 
 L'adresse pour accéder à Babelio est <https://www.babelio.com/>.
 
-La page d'accueil de Babelio dit: "Babelio est un réseau social dédié aux livres et aux lecteurs.
-Il permet de créer et d’organiser sa bibliothèque en ligne, d’obtenir des informations sur des œuvres,
-de partager et d’échanger ses goûts et impressions littéraires avec d’autres lecteurs."
+La page d'accueil de Babelio dit : "Babelio est un réseau social dédié aux livres et aux lecteurs.
+Il permet de créer et d’organiser sa bibliothèque en ligne, d’obtenir des informations sur des œuvres, de partager et d’échanger ses goûts et impressions littéraires avec d’autres lecteurs."
 
-Il n'est pas besoin de s'identifier pour obtenir des informations.
-(ce qui évite la gestion d'un acompte dans le plugin)
+Il n'est pas besoin de s'identifier pour obtenir des informations. (Ce qui évite la gestion d'un acompte dans le plugin)
 
 ## babelio_db métadonnées source plugin
 
 J'ai développé le plugin Babelio_db pour calibre d'après le plugin existant de VdF.
 Il se nomme Babelio_db pour ne pas écraser le plugin de VdF nommé babelio
 
-Je n'ai pas retrouvé trace de VdF... Son travail , sous licence GPL V3 peut être modifié.
+Je n'ai pas retrouvé trace de VdF... Son travail, sous licence GPL V3 peut être modifié.
 J'aurais voulu le contacter avant de publier mon travail, basé sur le sien, sur mobileread...
-De toute manière, il restera visible sur github <https://github.com/lrpirlet/cal-babelio_db>
+De toute manière, il restera visible sur GitHub <https://github.com/lrpirlet/cal-babelio_db>
 
 ## le plugin annexe babelio_notes
 
-J'ai accepté de re-écrire le plugin babelio_notes.
+J'ai accepté de réécrire le plugin babelio_notes.
 
-Avant tout, il est nécessaire de comprendre et d'admettre que calibre ne permet pas la modification
-d'une colonne personnalisée à partir d'un plugin de source de métadonnées. J'ai modifié babelio_db:
-optionnellement, babelio_db importe les notes dans les commentaires... Ce qui ne permet pas de
-trier les ouvrages en fonction de la note ou de la popularité (nombre de voix).
+Avant tout, il est nécessaire de comprendre et d'admettre que calibre ne permet pas la modification d'une colonne personnalisée à partir d'un plugin de source de métadonnées. J'ai modifié babelio_db : optionnellement, babelio_db importe les notes dans les commentaires... Ce qui ne permet pas de trier les ouvrages en fonction de la note ou de la popularité (nombre de voix).
 
-Après examen, il s'avère que ce plugin doit accéder a babelio exactement de la même manière
-que babelio_db afin d'identifier un livre dont on veut les notes.
+Après examen, il s'avère que ce plugin doit accéder à babelio exactement de la même manière que babelio_db afin d'identifier un livre dont on veut les notes.
 
-- pour éviter d'écrire deux routines différentes mais de fonctionnalité identique, dans deux
-  programmes différents, j'impose pour préliminaire un identifiant babelio_id valable.
+- pour éviter d'écrire deux routines différentes mais de fonctionnalité identique, dans deux programmes différents, j'impose pour préliminaire un identifiant babelio_id valable.
 - Ce babelio_id peut être introduit soit manuellement, soit via babelio_db.
 
 Après examen, un autre préliminaire est la présence de colonne pour recevoir les notes
 
-- je pense fournir au moins la vérification de présence de ces colonnes et peut-être la création
-  de ces colonnes
+- je pense fournir au moins la vérification de présence de ces colonnes et peut-être la création de ces colonnes
 - La note moyenne est la note calculée par babelio fonction des notes des différents lecteurs.
 - le nombre de votes est le nombre de lecteurs qui ont noté l'ouvrage sur babelio
 - le drapeau oui/non correspondra dorénavant à la présence d'un identifiant babelio_id
 
 Enfin
 
-- babelio_notes ne tournera que sous une version 6, ou plus, de calibre. Je ne connais pas
-  python 2.x ni les versions préalable a pyqt5 (et je ne connais pas vraiment pyqt5
-  même si je m'en sert.)
+- babelio_notes ne tournera que sous une version 6, ou plus, de calibre. Je ne connais pas python 2.x ni les versions préalables à pyqt5 (et je ne connais pas vraiment pyqt5 même si je m'en sert.)
 
-Ce travail est open source... J'ai pris du plaisir à l'écrire, si vous pensez que ce travail
-  doit être rétribué, choisissez une association caritative et donnez leur, un peu, avec une
-  mention comme "Thanks to Louis Richard" ou "Merci à Louis Richard" ou quelque chose de
-  similaire dans votre langue. Cela renforcera ma réputation (non publiée)...
+Ce travail est open source... J'ai pris du plaisir à l'écrire, si vous pensez que ce travail doit être rétribué, choisissez une association caritative et donnez-leur, un peu, avec une mention comme "Thanks to Louis Richard" ou "Merci à Louis Richard" ou quelque chose de similaire dans votre langue. Cela renforcera ma réputation (non publiée) ...
 
-Quelle charité ? Mes pires cauchemars impliquent le feu, donc je donne pour les enfants
-  profondément brûlés... Ma femme a peur du cancer donc elle donne à la recherche sur le cancer.
-  Nous nous sentons tous les deux mal à l'aise face aux gens qui meurent de faim donc nous donnons
-  au "resto du Cœur"...
+Quelle charité ? Mes pires cauchemars impliquent le feu, donc je donne pour les enfants profondément brûlés... Ma femme a peur du cancer donc elle donne à la recherche sur le cancer. Nous nous sentons tous les deux fort mal à l'aise face aux gens qui meurent de faim donc nous donnons au "resto du Cœur"...
 
-Malheureusement, il y a toujours quelqu'un qui a besoin d'aide et qui ne pourra pas rembourser
-(sauf peut-être avec une pensée pour l'inconnu qui l'a aidé). Il n'y a donc que l'embarras du choix.
+Malheureusement, il y a toujours quelqu'un qui a besoin d'aide et qui ne pourra pas rembourser (sauf peut-être avec une pensée pour l'inconnu qui l'a aidé). Il n'y a donc que l'embarras du choix.
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-Source sur github:
+Source sur GitHub:
 
 - babelio_db    <https://github.com/lrpirlet/cal-babelio_db>
 - babelio_notes <https://github.com/lrpirlet/cal-babelio_notes.git>

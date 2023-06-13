@@ -1,0 +1,22 @@
+Le plugin noosfere_util
+========================
+
+Créé juste pour apprendre Python... Je me suis amusé :-).
+
+Je vous prie de considérer que je n'ai aucun problème avec, et que je me réserve le le droit d'ignorer toute erreur, choix et mauvaise optimisation. Je l'utilise, c'est MON problème... Vous l'utilisez, c'est VOTRE problème.
+
+Un grand merci à toutes les personnes qui ont mis leur travail sous "open source copyright". En particulier, merci à Kovid Goyal qui a lancé calibre, et à tous les contributeurs...
+
+J'ai utilisé "Apprendre à programmer avec Python 3" de Gérard Swinnen. J'ai obtenu la copie de son livre à partir de
+https://python.developpez.com/cours/apprendre-python3/.
+
+J'ai été beaucoup aidé par les publications dans stackoverflow, en particulier, j'ai beaucoup apprecié l'explication des class :
+https://stackoverflow.com/questions/28684053/python-turn-giant-function-into-class
+
+J'ai obtenu mes icônes de https://icons8.com/, j'aime bien le thème de https://icons8.com/icons/ultraviolet ...
+
+J'ai utilisé https://www.deepl.com/translator pour vérifier mes traductions (enfin, en réalité, je ne me sens pas assez concernée par cela, car je pense tantôt en français et tantôt en anglais... J'ai tendance à oublier quelle est la langue que j'utilise ...)
+
+Je n'écris PAS de logiciels pour gagner ma vie. D'autres le font, ne l'oubliez pas quand vous l'utilisez. Si mon code en vaut la peine, pensez aux personnes affamées aux enfants profondément brûlés, à la recherche contre le cancer, aux victimes des guerres ou bien... à votre choix.
+
+    Louis Richard Pirlet

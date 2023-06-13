@@ -1,0 +1,75 @@
+This plugin should complement cal-noosfere.
+
+Issues in cal-noosfere:
+1 Cal-noosfere CANNOT wipe out a new metadata empty field
+  example: if a previous metadata source download, from anywhere, did set the series
+  to "something", and noosfere metadata source finds NO series,
+  then calibre will NOT wipe out the series field.
+2 A book may exist under several volumes... Each may differ because of a re-edition
+  by the same or by a different editor... it may even be part of one or several anthology
+  with possibly a different author and/or title and/or ISBN. I made some choice but this
+  may NOT be the best fit. Solution is to manually go to the book page and chose the best
+  volume by setting the nsfr_id, and restarting cal-noosfere metadata source plugin.
+3 Cal-noosfere does not allow modifying customized column, but allows overloading the
+  publisher field with the collection and the index of the collection.
+  It, then, becomes necessary to split this info in custom columns.
+
+Intentions:
+1 Provide some pre-processing by wiping out some fields, set nsfr_id to the new desired volume.
+2 Provide some post-processing by splitting and setting the information where it needs to go.
+
+Remark: I just NOT a professional developer... This is more like a hobby to learn about python...
+If I succeed, fine... read: no commitment. :-)
+
+Used as a base for this the experience gathered during a failing attempt to go interactive
+from within cal-noosfere metadata source plugin.
+
+Worked on a spawned WebEngineView and added a second unique toolbar... (great PyQt5 experience,
+A little bit like fighting mud... you see nothing clearly, find lots of examples, find many docs
+that looks contradictory till you grasp something that invalidate what you though you
+understood... anyway, it is still fun for a hobby :-)... I do think sometimes that Mickey mouse
+programming or assembler is easier... )
+
+Spawned process seems to work fine for both data in and data out...
+
+Added a class to allow for a search bar that could be hidden when  not in use... This implied
+creating a signal... that makes calibre to crash before control is passed to remote main...
+I guess I hit a bug or some undocumented restriction...
+
+Added some code to fill the noosfere form (was a lot easier than expected)
+
+Implemented a logging class and redirected output to a log file for the detached
+process web_main.py, now I can see what is wrong and correct it.
+
+version(0.5.0) is submitted for testing
+
+I wanted to make current the book actually processed by noosfere_util.
+
+BUT in that case the main calibre program is reachable and CAN BE KILLED (by pressing the X
+of the window).
+SO, it is possible to kill (main) calibre while the (noosfere_util) web_browser detached process
+is still running. If a book is selected, then the probability to hang the  (main) calibre is very
+high, preventing restarting calibre.
+
+A process named "The main calibre program" is still running...
+The workaround is to kill this process or to reboot...
+
+To avoid this situation, A signal named "shutdown_started" was implemented by kovidgoyal see:
+https://github.com/kovidgoyal/calibre/commit/171dda538a35e1968c7cdcf6fa9ec4226bc55912
+Now, at least 2 seconds are available to terminate the (noosfere_util) web_browser detached process cleanly.
+
+WARNING THIS IMPLIES USING calibre version 6.3.0 at a minimum (it is NOT possible to use it safely
+with a previous version of calibre...
+
+In noosfere_util, the handle_shutdown(), triggered by the signal, do create a temp file that tells
+the web_browser detached process, to terminate, simulating the user aborting...
+At the same time, the handle_shutdown() will simulate the answer from the web_browser detached
+process to speed-up the reaction...
+
+Some temporary files will be left behind that will be killed at next invocation of noosfere_util.
+
+I have tested various scenarii without problem, I still need to implement some improvements in particular
+when a lot of books are selected for "efface les metadonnées en surplus" et pour "Distribue l'information éditeur"
+
+this is quite a change toward what I like to achieve. I will push the version to (0.6.0) and submit it for testing.
+

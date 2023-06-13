@@ -1,0 +1,24 @@
+The noosfere_util plugin
+========================
+
+Created just to learn Python... I had fun :-).
+
+Please consider that I have no problem with, and that I reserve the right to ignore any error, choice and bad optimization. I use it, it's MY problem... You use it, it's YOUR problem.
+
+A big thanks to all the people who put their work under "open source copyright". In particular, thanks to Kovid Goyal who started calibre, and to all the contributors...
+
+I used "Apprendre à programmer avec Python 3" by Gérard Swinnen. I got the copy of his book from
+https://python.developpez.com/cours/apprendre-python3/.
+
+I was helped a lot by the publications in stackoverflow, in particular, I really appreciated the explanation of :
+https://stackoverflow.com/questions/28684053/python-turn-giant-function-into-class
+
+I got my icons from https://icons8.com/, I like the theme from https://icons8.com/icons/ultraviolet ...
+
+I used https://www.deepl.com/translator to check my translations (well, actually, I don't feel concerned enough about that, as I think sometimes in French and sometimes in English... I tend to forget which language I use...)
+
+I do NOT write software for a living. Others do, please remember that when you use it. If my code is worth it, think of the starving people, the badly burned children, the cancer research, the victims of wars or... You name it.
+
+    Louis Richard Pirlet
+
+Translated with www.DeepL.com/Translator (free version)
