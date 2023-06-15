@@ -1,5 +1,5 @@
 # stop any debug/development files to be uploaded
-junk/*
+junk/
 .vscode/*
 todo.txt
 junk*.*
