@@ -139,9 +139,9 @@ class InterfacePlugin(InterfaceAction):
 
       # The following is hidden cause it only allows a developper to navigate the metadata db
       # there is really no other uses for 'testtesttest'
-        # self.menu.addSeparator()
-        # create_menu_action_unique(self, self.menu, _('testtesttest'), 'blue_icon/top_icon.png',
-        #                           triggered=self.testtesttest)
+        self.menu.addSeparator()
+        create_menu_action_unique(self, self.menu, _('testtesttest'), 'blue_icon/top_icon.png',
+                                  triggered=self.testtesttest)
 
         self.gui.keyboard.finalize()
 
@@ -453,7 +453,7 @@ class InterfacePlugin(InterfaceAction):
 
         # Get currently selected books
         rows = self.gui.library_view.selectionModel().selectedRows()
-        # if DEBUG: prints("rows type : ", type(rows), "rows", rows) rows are selected rows in calibre
+        if DEBUG: prints("rows type : ", type(rows), "rows", rows)    # rows are selected rows in calibre
         if not rows or len(rows) == 0:
             return error_dialog(self.gui, 'Pas de métadonnées affectées',
                              'Aucun livre sélectionné', show=True)
@@ -496,9 +496,9 @@ class InterfacePlugin(InterfaceAction):
             if DEBUG: prints(20*"#²")
 
             for key in mi.custom_field_keys():
-                # if DEBUG: prints("custom_field_keys   : ", key)
+                if DEBUG: prints("custom_field_keys   : ", key)
                 display_name, val, oldval, fm = mi.format_field_extended(key)
-                # if DEBUG: prints("display_name={}, val={}, oldval={}, ff={}".format(display_name, val, oldval, fm))
+                if DEBUG: prints("display_name={}, val={}, oldval={}, ff={}".format(display_name, val, oldval, fm))
                 if fm and fm['datatype'] != 'composite':
                     if DEBUG: prints("custom_field_keys not composite : ", key)
                     if DEBUG: prints("display_name={}\n val={}\n oldval={}\n ff={}".format(display_name, val, oldval, fm))
