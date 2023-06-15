@@ -33,8 +33,6 @@ from calibre.utils.localization import get_udc
 from calibre.ebooks.metadata.sources.search_engines import rate_limit
 from calibre.gui2 import warning_dialog, error_dialog, question_dialog, info_dialog, show_restart_warning
 
-
-
 TIME_INTERVAL = 1.2      # this is the minimum interval between 2 access to the web (with decorator on ret_soup())
 
 class Un_par_un(object):
@@ -113,28 +111,6 @@ def ret_soup(br, url, rkt=None):
     # if DEBUG: prints("DEBUG soup.prettify() :\n",soup.prettify())               # hide_it # très utile parfois, mais que c'est long...
     return (soup, url_ret)
 
-def ret_clean_text(text):
-    '''
-    For the site search to work smoothly, authors and title needs to be cleaned.
-    we need to remove non significant characters and remove useless space character...
-    '''
-    if DEBUG:
-        prints("DEBUG: In ret_clean_txt(text)\n")
-        prints("DEBUG: text         : ", text)
-
-    txt = lower(get_udc().decode(text))
-
-    for k in [',','.',':','-',"'",'"','(',')','<','>','/']:             # yes I found a name with '(' and ')' in it...
-        if k in txt:
-            txt = txt.replace(k," ")
-    clntxt=" ".join(txt.split())
-
-    if DEBUG:
-        prints("DEBUG: cleaned text : ", clntxt)
-        prints("DEBUG: return text from ret_clean_txt")
-
-    return clntxt
-
 class InterfaceBabelioNotes(InterfaceAction):
 
     name = 'Babelio Notes'
@@ -173,9 +149,6 @@ class InterfaceBabelioNotes(InterfaceAction):
         Set the metadata in the files in the selected book's record to
         match the current metadata in the database.
         '''
-
-
-
         # Get currently selected books
         rows = self.gui.library_view.selectionModel().selectedRows()
         if not rows or len(rows) == 0:
@@ -189,10 +162,7 @@ class InterfaceBabelioNotes(InterfaceAction):
         for book_id in book_ids:
             # Get the current metadata for this book from the db
             mi = db.get_metadata(book_id, get_cover=True, cover_as_data=True)
-
-            notes = mi.get ("#ratingbab")
             votes = mi.get ("#nbvotbab")
-            trouvebab = mi.get ("#trouvebab")
             title = mi.title
             authors = mi.authors
             ids = mi.get_identifiers()
@@ -200,27 +170,33 @@ class InterfaceBabelioNotes(InterfaceAction):
                 prints("\nDEBUG "+(4*"+- Babelio Notes +-"))
                 prints("DEBUG: ids : {}".format(ids))
 
-            babelio_worker = DownloadBabelioWorker(self.gui, ids)
-            new_notes = babelio_worker.notes
-            new_votes = babelio_worker.votes
-            trouvebaby = 'Y'
-            trouvebabn = 'N'
+            cur_notes, cur_votes = self.get_rating(ids)
 
-            # ne mettre à jour que si le nombre de votes trouvés est supérieur à celui déjà présent
-            if new_votes:
-                db.new_api.set_field('#trouvebab', {book_id: trouvebaby})
-                votes_float = float(new_votes)
-                if votes:
-                    if votes_float > votes:
-                        db.new_api.set_field('#ratingbab', {book_id: new_notes})
-                        db.new_api.set_field('#nbvotbab', {book_id: new_votes})
-                    else:
-                        if DEBUG: prints('DEBUG: pas de nouveaux votes sur babelio ')
-                else:
-                    db.new_api.set_field('#ratingbab', {book_id: new_notes})
-                    db.new_api.set_field('#nbvotbab', {book_id: new_votes})
+          # Babelio a été accédé avec succès si cur_votes ou si cur_notes est plus grand que 0
+            if cur_votes:
+                db.new_api.set_field('#trouvebab', {book_id: 'Y'})
             else:
-                db.new_api.set_field('#trouvebab', {book_id: trouvebabn})
+                db.new_api.set_field('#trouvebab', {book_id: 'N'})
+                error_dialog(self.gui, "Babelio Notes",
+                             "<p> Si pas banni de Babelio :( ,</p>"
+                             "<p> Babelio_id est très probablement absent ou invalide.</p>"
+                             "<p> Veuillez le charger manuellement ou bien avec le plugin Babelio_db</p>", show=True)
+                if DEBUG:
+                    prints("DEBUG cur_votes : {} ... ".format(cur_votes))
+                    prints("DEBUG Si pas banni de Babelio :( ,")
+                    prints("DEBUG Babelio_id est très probablement absent ou invalide.")
+                    prints("DEBUG Veuillez le charger manuellement ou bien avec le plugin Babelio_db")
+
+          # ne mettre à jour que si le nombre de votes trouvés est supérieur à celui déjà présent
+            if votes:
+                if cur_votes > votes:
+                    db.new_api.set_field('#ratingbab', {book_id: cur_notes})
+                    db.new_api.set_field('#nbvotbab', {book_id: cur_votes})
+                else:
+                    if DEBUG: prints('DEBUG: pas de nouveaux votes sur babelio ')
+            else:
+                db.new_api.set_field('#ratingbab', {book_id: cur_notes})
+                db.new_api.set_field('#nbvotbab', {book_id: cur_votes})
 
             self.gui.iactions['Edit Metadata'].refresh_books_after_metadata_edit({book_id})
 
@@ -228,134 +204,53 @@ class InterfaceBabelioNotes(InterfaceAction):
                 'Recherche note et votes sur le site Babelio pour %d livre(s)'%len(book_ids),
                 show=True)
 
-class DownloadBabelioWorker(Source):
-
-    def __init__(self, gui, ids, timeout=20):
-        self.timeout = timeout
-        self.gui = gui
-        self.bbl_id = ids["babelio_id"] if "babelio_id" in ids else ""      # l'idée c'est que si on a babelio_id alors on connais le lvre ET son url
-        self.notes = None
-        self.votes = None
-
-        self.run()
-
-    def run(self):
-
-        matches = []
+    def get_rating(self, ids):
+        '''
+        go to the book URL on babelio if babelio_db exist
+        return notes as float and votes as int
+        '''
+        if DEBUG: prints("In get_rating")
+        notes, votes = 0, 0
         br = browser()
-        query = ""
-
-        prints("self.bbl_id  : {}".format(self.bbl_id))
-
-        if self.bbl_id and "/" in self.bbl_id and self.bbl_id.split("/")[-1].isnumeric():
-            matches = ["https://www.babelio.com/livres/" + self.bbl_id]
-            if DEBUG:
-                prints("DEBUG: bbl_id matches : ", matches)
-                prints("DEBUG: babelio identifier trouvé... pas de recherche sur babelio... on saute directement au livre\n")
-        else:
-            return error_dialog(self.gui, "Babelio Notes", "Babelio_id ("+ self.bbl_id +") absent ou invalide, veuillez le charger avec le plugin Babelio_db", show=True)
-
-        if len(matches) > 0:                                 # ok laisse ainsi maintenant... MAIS len doit etre 1 et suelement 1 simon on melange des livres
-            save_vote = 0
-            for notice in matches:
-                prints(('DEBUG notice %s' %notice))
-                response = br.open_novisit(notice, timeout=self.timeout)
-                if DEBUG:
-                    prints("DEBUG response.getcode() : ", response.getcode())
-                    prints("DEBUG response.info()    : ", response.info())
-                    prints("DEBUG response.geturl()  : ", response.geturl())
-
-                raw = response.read().strip()
-                raw = raw.decode('iso-8859-1', errors='replace')
-                root = fromstring(clean_ascii_chars(raw))
-
-                vote = root.xpath('//span[@itemprop="aggregateRating"]//span[@itemprop="ratingCount"]')
-                #ne conserver que les votes les plus élevés
-                if vote:
-                    votes_notice = vote[0].text_content().strip()
-                    prints(('DEBUG votes_notice %s' %votes_notice))
-                    votes_float = float(votes_notice)
-                    if votes_float > save_vote:
-                        self.votes = votes_notice
-                        save_vote = votes_float
-                        print(('self.votes %s' %self.votes))
-                        note = root.xpath('//span[@itemprop="aggregateRating"]/span[@itemprop="ratingValue"]')
-                        if note:
-                            self.notes = note[0].text_content().strip()
-                        print(('self.notes %s' %self.notes))
-                else:
-                    print('votes non trouvés')
-
-    def parse_search_results(orig_title, orig_authors, soup, br):
-        '''
-        this method returns "matches".
-        note: if several matches, the first presented in babelio will be the first in the
-        matches list; it will be submited as the first worker... (highest priority)
-        !! CAUTION !! if the number of book discovered is greater than 12, only the 12 most
-        significant will be returned
-        '''
-        prints('In parse_search_results(self, log, orig_title, orig_authors, soup, br)')
+        soup = None
+        bbl_id = ids["babelio_id"] if "babelio_id" in ids else ""
 
         if DEBUG:
-            prints("DEBUG orig_title    : ", orig_title)
-            prints("DEBUG orig_authors  : ", orig_authors)
+            prints("DEBUG ids    : {}".format(ids))
+            prints("DEBUG bbl_id : {}".format(bbl_id))
 
-        BASE_URL = 'https://www.babelio.com'
-
-        unsrt_match, matches = [], []
-        count=0
-        while count < 5 :                                                       # loop over 6 first pages of search result (max 6 request @ 1.6 sec)
-            try:
-                x=soup.select_one('div.mes_livres').select_one('tbody').select('tr')
-            except:
-                break
-            if len(x):                                                          # loop over all html addresses tied with titre_v2 (all book ref)
-                for i in range(len(x)):                                         # !!CAUTION!! each page may have up to 10 books
-                    y = x[i].select_one('td.titre_livre > a.titre_v2')
-                    sous_url = y["href"].strip()
-                    titre = y.text.strip()
-                    ttl=ret_clean_text(log, self.dbg_lvl, titre)
-                    orig_ttl=ret_clean_text(log, self.dbg_lvl, orig_title)
-                    y = x[i].select_one('td.auteur > a.auteur_v2')
-                    auteur=y.text.strip()
-                    aut=ret_clean_text(log, self.dbg_lvl, auteur)
-                    maxi=0
-                    if orig_authors:
-                        for i in range(len(orig_authors)):
-                            orig_authors[i] = ret_clean_text(log, self.dbg_lvl, orig_authors[i])
-                            maxi = max(maxi, (SM(None,aut,orig_authors[i]).ratio()))        # compute and find max ratio comparing auteur presented by babelio to each item of requested authors
-                    else:
-                        orig_authors=[]
-                    unsrt_match.append((sous_url,(SM(None,ttl, orig_ttl).ratio()+maxi)))    # compute ratio comparing titre presented by babelio to requested title
-                    # unsrt_match.append((sous_url,(SM(None,ttl, orig_ttl).ratio()+maxi),titre,orig_title,auteur,orig_authors))   # may be long
-            if not soup.select_one('.icon-next'):                               #
-                break                                                           # exit loop if no more next page
-            count = count + 1                                                   #
-            nxtpg = BASE_URL + soup.select_one('.icon-next')["href"]    # get next page adress
+        if bbl_id and "/" in bbl_id and bbl_id.split("/")[-1].isnumeric():
+            bk_url = "https://www.babelio.com/livres/" + bbl_id
             if DEBUG:
-                prints("DEBUG next page : ",nxtpg)                            #
-            soup=ret_soup(log, self.dbg_lvl, br, nxtpg)[0]               # get new soup content and loop again, request MUST take at least 1 second
-            time.sleep(0.5)                                                     # but wait a while so as not to hit www.babelio.com too hard
-
-        srt_match = sorted(unsrt_match, key= lambda x: x[1], reverse=True)      # find best matches over the orig_title and orig_authors
-
-        prints('DEBUG nombre de références trouvées dans babelio', len(srt_match))
-        # if DEBUG:                                                                          # hide_it # may be long
-        #     for i in range(len(srt_match)): log.info('srt_match[i] : ', srt_match[i])      # hide_it # may be long
-
-        srt_match = srt_match[:12]                                              # limit to 12 requests (max 12 requests @ #workers sec)
-        for i in range(len(srt_match)):
-            matches.append(BASE_URL + srt_match[i][0])
-
-        if not matches:
-            if DEBUG:
-                prints("DEBUG matches at return time : ", matches)
-            return None
+                prints("DEBUG: url deduced from babelio_id : ", bk_url)
         else:
-            prints("nombre de matches : ", len(matches))
-            if DEBUG:
-                prints("DEBUG matches at return time : ")
-                for i in range(len(matches)):
-                    prints("      ", matches[i])
+            return notes, votes
 
-        return matches
+        soup = ret_soup(br, bk_url)[0]
+        if not soup:
+            return notes, votes
+        if DEBUG:
+            prints("DEBUG soup prettyfied :\n", soup.prettify())
+
+        try:
+            notes, votes = self.parse_rating(soup)
+        except:
+            return notes, votes
+
+        return notes, votes
+
+    def parse_rating(self, soup):
+        '''
+        find and isolate rating an count of rating in the soup
+        returns rating as float and rating_cnt as int
+        '''
+        if DEBUG:
+            prints("DEBUG in parse_rating(self, soup)")
+
+      # if soup.select_one('span[itemprop="aggregateRating"]') fails, an exception will be raised
+        rating_soup = soup.select_one('span[itemprop="aggregateRating"]').select_one('span[itemprop="ratingValue"]')
+        bbl_rating = float(rating_soup.text.strip())
+        rating_cnt_soup = soup.select_one('span[itemprop="aggregateRating"]').select_one('span[itemprop="ratingCount"]')
+        bbl_rating_cnt = int(rating_cnt_soup.text.strip())
+
+        return bbl_rating, bbl_rating_cnt
