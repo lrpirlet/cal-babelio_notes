@@ -196,7 +196,7 @@ class ConfigWidget(QWidget):
         if self.creator.must_restart():
             restart = question_dialog(self.gui, 'Désolé, calibre doit redémarrer pour procéder',
                 "<p>Aucune modification ne peut plus être actée...<p>"
-                "<p>Faut-il redémarrer maintenant, avant de créer une autre colonne ? <p>",
+                "<p>Faut-il redémarrer maintenant ? <p>",
                 show_copy_button=False)
             if restart :
                 self.save_settings
@@ -234,13 +234,12 @@ class ConfigWidget(QWidget):
         prefs["NOTE_MOYENNE"] = self.note_moyenne
         prefs["NBR_VOTES"] = self.nbr_votes
 
-        allow_restart = question_dialog(self.gui, 'calibre devrait redémarrer',
-                "<p>Pour être pris en considération, ce choix de colonne(s) impose un redémarrage...<p>"
-                "<p>La dénomination de la présence, ou non, de babelio_id sera : <strong>{}</strong><p>"
-                "<p>La dénomination de la moyenne de toutes les notes attribueés sera : <strong>{}</strong><p>"
-                "<p>La dénomination du nombre de notes attribuée sera : <strong>{}</strong><p>"
-                "<p>On redémarre maintenant?<p>".format(self.on_babelio,self.note_moyenne,self.nbr_votes),
-                show_copy_button=False)
+        allow_restart = show_restart_warning(\
+            "<p>Après redémarrage...<p>"\
+            "<p>La dénomination de la présence, ou non, de babelio_id sera : <strong>{}</strong><p>"\
+            "<p>La dénomination de la moyenne des notes attribueés sera : <strong>{}</strong><p>"\
+            "<p>La dénomination du nombre de notes attribuée sera : <strong>{}</strong><p>"\
+            .format(self.on_babelio,self.note_moyenne,self.nbr_votes))
         if allow_restart :
                  self.gui.quit(restart=True)
 

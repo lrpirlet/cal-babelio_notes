@@ -12,7 +12,7 @@ class InterfaceNotesBabelio(InterfaceActionBase):
     '''
     This class is a simple wrapper that provides information about the actual
     plugin class. The actual interface plugin class is called InterfacePlugin
-    and is defined in the ui.py file, as specified in the actual_plugin field
+    and is defined in the main.py file, as specified in the actual_plugin field
     below.
 
     The reason for having two classes is that it allows the command line
@@ -31,7 +31,7 @@ class InterfaceNotesBabelio(InterfaceActionBase):
     #
     # le nom "babelio_notes" vient du fichier "plugin-import-name-babelio_notes.txt"
     #
-    actual_plugin       = 'calibre_plugins.babelio_notes.ui:InterfaceBabelioNotes'
+    actual_plugin       = 'calibre_plugins.babelio_notes.main:InterfaceBabelioNotes'
 
     def is_customizable(self):
         '''
