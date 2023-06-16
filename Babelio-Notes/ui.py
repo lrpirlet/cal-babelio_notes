@@ -33,6 +33,8 @@ from calibre.utils.localization import get_udc
 from calibre.ebooks.metadata.sources.search_engines import rate_limit
 from calibre.gui2 import warning_dialog, error_dialog, question_dialog, info_dialog, show_restart_warning
 
+from calibre_plugins.babelio_notes.config import prefs
+
 TIME_INTERVAL = 1.2      # this is the minimum interval between 2 access to the web (with decorator on ret_soup())
 
 class Un_par_un(object):
@@ -138,11 +140,44 @@ class InterfaceBabelioNotes(InterfaceAction):
         # are not found in the zip file will result in null QIcons.
         icon = get_icons('images/babelio.png')
 
+        # load the prefs so that they are available
+        # this does NOT create the .json file
+        # this does not create the column
+        self.on_babelio_name = prefs["ON_BABELIO"]
+        self.note_moyenne_name = prefs["NOTE_MOYENNE"]
+        self.nbr_votes_name = prefs["NBR_VOTES"]
+
         # The qaction is automatically created from the action_spec defined
         # above
         self.qaction.setIcon(icon)
         # Assign our menu to this action and an icon
         self.qaction.triggered.connect(self.update_babelio_notes)
+
+    def test_for_column_names(self):
+        '''
+        this will verify the presence of the columns name when at least one line is selected
+        return True if column names present
+        '''
+        if DEBUG:
+            prints("in test_for_column")
+            prints('prefs["ON_BABELIO"]   : {}'.format(self.on_babelio_name))
+            prints('prefs["NOTE_MOYENNE"] : {}'.format(self.note_moyenne_name))
+            prints('prefs["NBR_VOTES"]    : {}'.format(self.nbr_votes_name))
+
+        custom_columns = self.gui.library_view.model().custom_columns
+        all_custom_col = []
+        for key, column in custom_columns.items(): all_custom_col.append(key)
+        if DEBUG: prints("all_custom_col :", all_custom_col)
+        if (self.on_babelio_name and self.note_moyenne_name and self.nbr_votes_name) not in all_custom_col:
+            if DEBUG:
+                prints("Okay, Houston...we've had a problem here (Apollo 13)")
+            info_dialog(self.gui, 'Colonne inexistante',
+                "<p> L'une ou l'autre colonne n'existe(nt) pas... Veuillez y remédier.</p>"
+                "<p> On peut utiliser <strong>Babelio Notes</strong>, pour <strong>personnaliser l'extension</strong>.</p>",
+                show=True)
+            return False
+        return True
+
 
     def update_babelio_notes(self):
         '''
@@ -158,6 +193,10 @@ class InterfaceBabelioNotes(InterfaceAction):
       # Map the rows to book ids
         book_ids = self.gui.library_view.get_selected_ids()
 
+      # some lines are selected, so check for presence of needed column
+        if not self.test_for_column_names():
+            return
+
         for book_id in book_ids:
             self.update_one_line(book_id, row_count)
 
@@ -169,11 +208,12 @@ class InterfaceBabelioNotes(InterfaceAction):
         '''
         update one line in the selection
         '''
+
         db = self.gui.current_db.new_api
 
       # Get the current metadata for this book from the db
         mi = db.get_metadata(book_id, get_cover=True, cover_as_data=True)
-        votes = mi.get ("#nbvotbab")
+        votes = mi.get (self.nbr_votes_name)
         title = mi.title
         authors = mi.authors
         ids = mi.get_identifiers()
@@ -185,9 +225,9 @@ class InterfaceBabelioNotes(InterfaceAction):
 
       # Babelio a été accédé avec succès si cur_votes ou si cur_notes est plus grand que 0
         if cur_votes:
-            db.new_api.set_field('#trouvebab', {book_id: 'Y'})
+            db.new_api.set_field(self.on_babelio_name, {book_id: 'Y'})
         else:
-            db.new_api.set_field('#trouvebab', {book_id: 'N'})
+            db.new_api.set_field(self.on_babelio_name, {book_id: 'N'})
             if row_count == 1:
                 error_dialog(self.gui, "Babelio Notes",
                          "<p> Si pas banni de Babelio :( ,</p>"
@@ -206,13 +246,15 @@ class InterfaceBabelioNotes(InterfaceAction):
       # ne mettre à jour que si le nombre de votes trouvés est supérieur à celui déjà présent
         if votes:
             if cur_votes > votes:
-                db.new_api.set_field('#ratingbab', {book_id: cur_notes})
-                db.new_api.set_field('#nbvotbab', {book_id: cur_votes})
+                db.new_api.set_field(self.note_moyenne_name, {book_id: cur_notes})
+                db.new_api.set_field(self.nbr_votes_name, {book_id: cur_votes})
             else:
                 if DEBUG: prints('DEBUG: pas de nouveaux votes sur babelio ')
         else:
-            db.new_api.set_field('#ratingbab', {book_id: cur_notes})
-            db.new_api.set_field('#nbvotbab', {book_id: cur_votes})
+            if cur_notes:
+                db.new_api.set_field(self.note_moyenne_name, {book_id: cur_notes})
+            if cur_votes:
+                db.new_api.set_field(self.nbr_votes_name, {book_id: cur_votes})
 
         self.gui.iactions['Edit Metadata'].refresh_books_after_metadata_edit({book_id})
 

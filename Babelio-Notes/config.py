@@ -107,21 +107,21 @@ class ConfigWidget(QWidget):
         info_label.setToolTip("En sélectionnant la création de colonne on redémarre calibre. Ensuite, après le redémarrage, on pourra sélectionner une colonne valide.")
 
         label_on_babelio = QLabel("Présence, ou non, de babelio_id associé à l'ouvrage")
-        label_on_babelio.setToolTip("La colonne présentée est celle actuellement sélectionnée.")
+        label_on_babelio.setToolTip('La colonne présentée est celle actuellement sélectionnée. Si vide ou impropre, choisir "Ajouter et sélectionner une colonne"')
         self.name_on_babelio = QComboBox(self)
         self.name_on_babelio.addItems(self.pertinent_on_babelio_list)
         self.name_on_babelio.setCurrentIndex(self.name_on_babelio.findText(self.current_on_babelio,Qt.MatchFixedString))
         self.name_on_babelio.textActivated.connect(self.select_for_on_babelio)
 
         label_note_moyenne = QLabel("Moyenne des notes attribuées à l'ouvrage")
-        label_note_moyenne.setToolTip("La colonne présentée est celle actuellement sélectionnée.")
+        label_note_moyenne.setToolTip('La colonne présentée est celle actuellement sélectionnée.Si vide ou impropre, choisir "Ajouter et sélectionner une colonne"')
         self.name_note_moyenne = QComboBox(self)
         self.name_note_moyenne.addItems(self.pertinent_note_moyenne_list)
         self.name_note_moyenne.setCurrentIndex(self.name_note_moyenne.findText(self.current_note_moyenne,Qt.MatchFixedString))
         self.name_note_moyenne.textActivated.connect(self.select_for_note_moyenne)
 
         label_nbr_votes = QLabel("Nombre de notes attribuées à l'ouvrage")
-        label_nbr_votes.setToolTip("La colonne présentée est celle actuellement sélectionnée.")
+        label_nbr_votes.setToolTip('La colonne présentée est celle actuellement sélectionnée. Si vide ou impropre, choisir "Ajouter et sélectionner une colonne"')
         self.name_nbr_votes = QComboBox(self)
         self.name_nbr_votes.addItems(self.pertinent_nbr_votes_list)
         self.name_nbr_votes.setCurrentIndex(self.name_nbr_votes.findText(self.current_nbr_votes,Qt.MatchFixedString))
@@ -173,7 +173,6 @@ class ConfigWidget(QWidget):
             self.nbr_votes = name
             self.name_nbr_votes.setCurrentIndex(self.name_nbr_votes.findText(name,Qt.MatchFixedString))
         if DEBUG: prints("self.nbr_votes : ", self.nbr_votes)
-
 
     def create_custom_column(self, lookup_name=None):
         if DEBUG: prints("\nIn create_custom_column - lookup_name:", lookup_name)

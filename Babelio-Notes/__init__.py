@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 # vim:fileencoding=UTF-8:ts=4:sw=4:sta:et:sts=4:ai
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
 
 __license__   = 'GPL v3'
 __copyright__ = 'Louis Richard Pirlet based on Christophe work'
@@ -21,7 +19,7 @@ class InterfaceNotesBabelio(InterfaceActionBase):
     calibre utilities to run without needing to load the GUI libraries.
     '''
     name                = 'Babelio Notes'
-    description         = 'Recherche note moyenne et votes sur le site de Babelio'
+    description         = 'Recherche la moyenne des notes et le nombre de notes (votes) sur le site de Babelio'
     supported_platforms = ['windows', 'osx', 'linux']
     author              = 'Louis Richard Pirlet based on Christophe work'
     version             = (4, 0, 0)
