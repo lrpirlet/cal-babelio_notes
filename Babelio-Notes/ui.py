@@ -142,67 +142,79 @@ class InterfaceBabelioNotes(InterfaceAction):
         # above
         self.qaction.setIcon(icon)
         # Assign our menu to this action and an icon
-        self.qaction.triggered.connect(self.update_babelio)
+        self.qaction.triggered.connect(self.update_babelio_notes)
 
-    def update_babelio(self):
+    def update_babelio_notes(self):
         '''
         Set the metadata in the files in the selected book's record to
         match the current metadata in the database.
         '''
-        # Get currently selected books
+      # Get currently selected books
         rows = self.gui.library_view.selectionModel().selectedRows()
-        if not rows or len(rows) == 0:
+        row_count = len(rows)
+        if not rows or row_count == 0:
             return error_dialog(self.gui, 'Vous devez sélectionner un ou plusieurs livres', show=True)
-        # Map the rows to book ids
+
+      # Map the rows to book ids
         book_ids = self.gui.library_view.get_selected_ids()
 
-        #dbA = self.gui.current_db
-        db = self.gui.current_db.new_api
-
         for book_id in book_ids:
-            # Get the current metadata for this book from the db
-            mi = db.get_metadata(book_id, get_cover=True, cover_as_data=True)
-            votes = mi.get ("#nbvotbab")
-            title = mi.title
-            authors = mi.authors
-            ids = mi.get_identifiers()
-            if DEBUG:
-                prints("\nDEBUG "+(4*"+- Babelio Notes +-"))
-                prints("DEBUG: ids : {}".format(ids))
-
-            cur_notes, cur_votes = self.get_rating(ids)
-
-          # Babelio a été accédé avec succès si cur_votes ou si cur_notes est plus grand que 0
-            if cur_votes:
-                db.new_api.set_field('#trouvebab', {book_id: 'Y'})
-            else:
-                db.new_api.set_field('#trouvebab', {book_id: 'N'})
-                error_dialog(self.gui, "Babelio Notes",
-                             "<p> Si pas banni de Babelio :( ,</p>"
-                             "<p> Babelio_id est très probablement absent ou invalide.</p>"
-                             "<p> Veuillez le charger manuellement ou bien avec le plugin Babelio_db</p>", show=True)
-                if DEBUG:
-                    prints("DEBUG cur_votes : {} ... ".format(cur_votes))
-                    prints("DEBUG Si pas banni de Babelio :( ,")
-                    prints("DEBUG Babelio_id est très probablement absent ou invalide.")
-                    prints("DEBUG Veuillez le charger manuellement ou bien avec le plugin Babelio_db")
-
-          # ne mettre à jour que si le nombre de votes trouvés est supérieur à celui déjà présent
-            if votes:
-                if cur_votes > votes:
-                    db.new_api.set_field('#ratingbab', {book_id: cur_notes})
-                    db.new_api.set_field('#nbvotbab', {book_id: cur_votes})
-                else:
-                    if DEBUG: prints('DEBUG: pas de nouveaux votes sur babelio ')
-            else:
-                db.new_api.set_field('#ratingbab', {book_id: cur_notes})
-                db.new_api.set_field('#nbvotbab', {book_id: cur_votes})
-
-            self.gui.iactions['Edit Metadata'].refresh_books_after_metadata_edit({book_id})
+            self.update_one_line(book_id, row_count)
 
         info_dialog(self.gui, 'Babelio Notes',
                 'Recherche note et votes sur le site Babelio pour %d livre(s)'%len(book_ids),
                 show=True)
+
+    def update_one_line(self, book_id, row_count):
+        '''
+        update one line in the selection
+        '''
+        db = self.gui.current_db.new_api
+
+      # Get the current metadata for this book from the db
+        mi = db.get_metadata(book_id, get_cover=True, cover_as_data=True)
+        votes = mi.get ("#nbvotbab")
+        title = mi.title
+        authors = mi.authors
+        ids = mi.get_identifiers()
+        if DEBUG:
+            prints("\nDEBUG "+(4*"+- Babelio Notes +-"))
+            prints("DEBUG: ids : {}".format(ids))
+
+        cur_notes, cur_votes = self.get_rating(ids)
+
+      # Babelio a été accédé avec succès si cur_votes ou si cur_notes est plus grand que 0
+        if cur_votes:
+            db.new_api.set_field('#trouvebab', {book_id: 'Y'})
+        else:
+            db.new_api.set_field('#trouvebab', {book_id: 'N'})
+            if row_count == 1:
+                error_dialog(self.gui, "Babelio Notes",
+                         "<p> Si pas banni de Babelio :( ,</p>"
+                         "<p> Babelio_id est très probablement absent ou invalide.</p>"
+                         "<p> Veuillez le charger manuellement ou bien avec le plugin Babelio_db</p>", show=True)
+            else:
+                # log.info("Accès à babelio!")  TODO
+                # flag that line
+                pass
+            if DEBUG:
+                prints("DEBUG cur_votes = {} ...".format(cur_votes))
+                prints("DEBUG Si pas banni de Babelio :( ,")
+                prints("DEBUG Babelio_id est très probablement absent ou invalide.")
+                prints("DEBUG Veuillez le charger manuellement ou bien avec le plugin Babelio_db")
+
+      # ne mettre à jour que si le nombre de votes trouvés est supérieur à celui déjà présent
+        if votes:
+            if cur_votes > votes:
+                db.new_api.set_field('#ratingbab', {book_id: cur_notes})
+                db.new_api.set_field('#nbvotbab', {book_id: cur_votes})
+            else:
+                if DEBUG: prints('DEBUG: pas de nouveaux votes sur babelio ')
+        else:
+            db.new_api.set_field('#ratingbab', {book_id: cur_notes})
+            db.new_api.set_field('#nbvotbab', {book_id: cur_votes})
+
+        self.gui.iactions['Edit Metadata'].refresh_books_after_metadata_edit({book_id})
 
     def get_rating(self, ids):
         '''
@@ -230,7 +242,8 @@ class InterfaceBabelioNotes(InterfaceAction):
         if not soup:
             return notes, votes
         if DEBUG:
-            prints("DEBUG soup prettyfied :\n", soup.prettify())
+            # prints("DEBUG soup prettyfied :\n", soup.prettify())      # only for deep debug, too big
+            pass
 
         try:
             notes, votes = self.parse_rating(soup)
@@ -254,3 +267,13 @@ class InterfaceBabelioNotes(InterfaceAction):
         bbl_rating_cnt = int(rating_cnt_soup.text.strip())
 
         return bbl_rating, bbl_rating_cnt
+
+    def apply_settings(self):
+        from calibre_plugins.babelio_notes.config import prefs
+        # In an actual non trivial plugin, you would probably need to
+        # do something based on the settings in prefs
+        if DEBUG: prints("in apply_settings")
+        if DEBUG: prints("prefs['ON_BABELIO'] : ", prefs["ON_BABELIO"])
+        if DEBUG: prints("prefs['NOTE_MOYENNE'] : ", prefs['NOTE_MOYENNE'])
+        if DEBUG: prints("prefs['NBR_VOTES'] : ", prefs['NBR_VOTES'])
+        prefs
