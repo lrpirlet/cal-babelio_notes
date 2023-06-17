@@ -5,32 +5,18 @@ __license__   = 'GPL v3'
 __copyright__ = 'Louis Richard Pirlet based on Christophe work'
 __docformat__ = 'restructuredtext en'
 
-from calibre import prints
+from calibre import prints, browser              # browser is mechanize
 from calibre.constants import DEBUG
 
-from calibre.gui2.actions import InterfaceAction        # The class that all interface action plugins must inherit from
-from calibre.ebooks.metadata.book.base import Metadata
-
-import urllib                                   # to access the web
-from bs4 import BeautifulSoup as BS             # to dismantle and manipulate HTTP (HyperText Markup Language) a text formated utf-8
-
-import time, datetime
-from urllib.parse import quote
-
-from lxml.html import fromstring, tostring
-from calibre import browser                     # broser is mechanize
-
-from calibre import as_unicode
-from calibre.utils.icu import lower
-from calibre.ebooks.metadata.sources.base import Source
-from calibre.utils.cleantext import clean_ascii_chars
-from calibre.utils.localization import get_udc
-
-from calibre.ebooks.metadata.sources.search_engines import rate_limit
-from calibre.gui2 import warning_dialog, error_dialog, question_dialog, info_dialog, show_restart_warning
+from calibre.gui2 import open_url, error_dialog, info_dialog
+from calibre.gui2.actions import InterfaceAction # The class that all interface action plugins must inherit from
+from bs4 import BeautifulSoup as BS              # to dismantle and manipulate HTTP (HyperText Markup Language) a text formated utf-8
 
 from calibre_plugins.babelio_notes.config import prefs
 from calibre_plugins.babelio_notes.utility import ret_soup, create_menu_action_unique
+
+from qt.core import (QMenu, QMessageBox, QToolButton, QUrl, QEventLoop, QTimer)
+import tempfile, glob, os, contextlib
 
 class InterfaceBabelioNotes(InterfaceAction):
 
@@ -43,6 +29,9 @@ class InterfaceBabelioNotes(InterfaceAction):
     action_spec = ('Babelio Notes', None,
             'Recherche note moyenne et votes sur le site de Babelio', ())
     action_type = 'current'
+
+  # remove help file that may have been updated anyway
+    with contextlib.suppress(FileNotFoundError): os.remove(os.path.join(tempfile.gettempdir(), "babelio_notes_doc.html"))
 
     def genesis(self):
         # This method is called once per plugin, do initial setup here
@@ -57,20 +46,42 @@ class InterfaceBabelioNotes(InterfaceAction):
         # should pass a list of names to get_icons. In this case, get_icons
         # will return a dictionary mapping names to QIcons. Names that
         # are not found in the zip file will result in null QIcons.
+
+      # get_icons and get_resources are partially defined function (zip location is defined)
+      # those are known when genesis is called by calibre
         icon = get_icons('images/babelio.png')
 
-        # load the prefs so that they are available
-        # this does NOT create the .json file
-        # this does not create the column
+      # load the prefs so that they are available this does NOT create the .json file nor create the columns haeder
         self.on_babelio_name = prefs["ON_BABELIO"]
         self.note_moyenne_name = prefs["NOTE_MOYENNE"]
         self.nbr_votes_name = prefs["NBR_VOTES"]
 
-        # The qaction is automatically created from the action_spec defined
-        # above
+      # here we create a menu attached to this icon
+        self.build_menus()
+      # Assign our menu to this icon associated with an action
         self.qaction.setIcon(icon)
-        # Assign our menu to this action and an icon
         self.qaction.triggered.connect(self.update_babelio_notes)
+
+    def build_menus(self):
+        self.menu = QMenu(self.gui)
+        self.menu.clear()
+
+        create_menu_action_unique(self, self.menu, _("Mets à jour les Notes"), 'images/mises-a-jour.png',
+                                  triggered=self.update_babelio_notes)
+        self.menu.addSeparator()
+
+        create_menu_action_unique(self, self.menu, _("Personnalise l'extension")+'...', 'images/config.png',
+                                  triggered=self.set_configuration)
+        self.menu.addSeparator()
+
+        create_menu_action_unique(self, self.menu, _('Aide'), 'images/documentation.png',
+                                  triggered=self.show_help)
+        create_menu_action_unique(self, self.menu, _('A propos'), 'images/about.png',
+                                  triggered=self.about)
+
+        self.gui.keyboard.finalize()
+      # Assign our menu to this action and an icon, also add dropdown menu
+        self.qaction.setMenu(self.menu)
 
     def test_for_column_names(self):
         '''
@@ -107,9 +118,11 @@ class InterfaceBabelioNotes(InterfaceAction):
         rows = self.gui.library_view.selectionModel().selectedRows()
         row_count = len(rows)
         if not rows or row_count == 0:
-            return error_dialog(self.gui, 'Vous devez sélectionner un ou plusieurs livres', show=True)
+            return error_dialog(self.gui, 'trop peu',
+                                'Vous devez sélectionner un ou plusieurs livres', show=True)
         if row_count > 50:
-            return error_dialog(self.gui, 'Selectionner un max de 50 lines par itération', show=True)
+            return error_dialog(self.gui, 'beaucoup trop',
+                                'Selectionner un max de 50 lines par itération', show=True)
 
       # Map the rows to book ids
         book_ids = self.gui.library_view.get_selected_ids()
@@ -233,6 +246,42 @@ class InterfaceBabelioNotes(InterfaceAction):
         bbl_rating_cnt = int(rating_cnt_soup.text.strip())
 
         return bbl_rating, bbl_rating_cnt
+
+    def set_configuration(self):
+        '''
+        will present the configuration widget... should handle custom columns needed for
+        self.collection_name (#collection) and self.coll_srl_name (#coll_srl).
+        '''
+        self.interface_action_base_plugin.do_user_config(self.gui)
+
+    def show_help(self):
+      # Extract on demand the help file resource to a temp file
+        def get_help_file_resource():
+          # keep "babelio_notes_doc.html" as the last item in the list, this is the help entry point
+          # we need both files for the help
+            file_path = os.path.join(tempfile.gettempdir(), "noosfere_util_web_075.png")
+            file_data = self.load_resources('doc/' + "noosfere_util_web_075.png")['doc/' + "noosfere_util_web_075.png"]
+            if DEBUG: prints('show_help picture - file_path:', file_path)
+            with open(file_path,'wb') as fpng:
+                fpng.write(file_data)
+
+            file_path = os.path.join(tempfile.gettempdir(), "babelio_notes_doc.html")
+            file_data = self.load_resources('doc/' + "babelio_notes_doc.html")['doc/' + "babelio_notes_doc.html"]
+            if DEBUG: prints('show_help - file_path:', file_path)
+            with open(file_path,'wb') as fhtm:
+                fhtm.write(file_data)
+            return file_path
+        url = 'file:///' + get_help_file_resource()
+        url = QUrl(url)
+        open_url(url)
+
+    def about(self):
+        text = get_resources("doc/about.txt")
+        text += ("\n ======================== \n"
+                 "\n La presence sur babelio, ou non, se nomme : {},"
+                 "\n La moyenne des notes se nomme : {},"
+                 "\n le nombre de notes se nomme : {}.".format(self.on_babelio_name, self.note_moyenne_name, self.nbr_votes_name)).encode('utf-8')
+        QMessageBox.about(self.gui, 'A propos de Babelio Notes', text.decode('utf-8'))
 
     def apply_settings(self):
         '''

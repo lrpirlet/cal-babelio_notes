@@ -8,28 +8,14 @@ __docformat__ = 'restructuredtext en'
 from calibre import prints
 from calibre.constants import DEBUG
 
-from calibre.gui2.actions import InterfaceAction        # The class that all interface action plugins must inherit from
+from calibre.gui2.actions import menu_action_unique_name
 from calibre.ebooks.metadata.book.base import Metadata
+from calibre.ebooks.metadata.sources.search_engines import rate_limit
+from calibre_plugins.babelio_notes.config import prefs
 
 import urllib                                   # to access the web
 from bs4 import BeautifulSoup as BS             # to dismantle and manipulate HTTP (HyperText Markup Language) a text formated utf-8
-
 import time, datetime
-from urllib.parse import quote
-
-from lxml.html import fromstring, tostring
-from calibre import browser                     # broser is mechanize
-
-from calibre import as_unicode
-from calibre.utils.icu import lower
-from calibre.ebooks.metadata.sources.base import Source
-from calibre.utils.cleantext import clean_ascii_chars
-from calibre.utils.localization import get_udc
-
-from calibre.ebooks.metadata.sources.search_engines import rate_limit
-from calibre.gui2 import warning_dialog, error_dialog, question_dialog, info_dialog, show_restart_warning
-
-from calibre_plugins.babelio_notes.config import prefs
 
 TIME_INTERVAL = 1.2      # this is the minimum interval between 2 access to the web (with decorator on ret_soup())
 
@@ -129,7 +115,6 @@ def create_menu_action_unique(ia, parent_menu, menu_text, image=None, tooltip=No
     # ok, to be honest I could make this one work... I had lots of
     # difficulties with the many common_utils.py files that have the same name
     # but different content...
-    # P.S. I like blue icons :-)...
 
     orig_shortcut = shortcut
     kb = ia.gui.keyboard
