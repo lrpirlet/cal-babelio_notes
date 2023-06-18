@@ -7,15 +7,14 @@ __docformat__ = 'restructuredtext en'
 
 from calibre import prints, browser              # browser is mechanize
 from calibre.constants import DEBUG
-
 from calibre.gui2 import open_url, error_dialog, info_dialog
 from calibre.gui2.actions import InterfaceAction # The class that all interface action plugins must inherit from
-from bs4 import BeautifulSoup as BS              # to dismantle and manipulate HTTP (HyperText Markup Language) a text formated utf-8
-
 from calibre_plugins.babelio_notes.config import prefs
 from calibre_plugins.babelio_notes.utility import ret_soup, create_menu_action_unique
 
 from qt.core import (QMenu, QMessageBox, QToolButton, QUrl, QEventLoop, QTimer)
+
+from bs4 import BeautifulSoup as BS              # to dismantle and manipulate HTTP (HyperText Markup Language)
 import tempfile, glob, os, contextlib
 
 class InterfaceBabelioNotes(InterfaceAction):
@@ -118,16 +117,22 @@ class InterfaceBabelioNotes(InterfaceAction):
         rows = self.gui.library_view.selectionModel().selectedRows()
         row_count = len(rows)
         if not rows or row_count == 0:
-            return error_dialog(self.gui, 'trop peu',
+            return error_dialog(self.gui, "C'est trop peu",
                                 'Vous devez sélectionner un ou plusieurs livres', show=True)
         if row_count > 50:
-            return error_dialog(self.gui, 'beaucoup trop',
-                                'Selectionner un max de 50 lines par itération', show=True)
+            return error_dialog(self.gui, "C'est beaucoup trop",
+                                'Vous pouvez selectionner un max de 50 livres.', show=True)
+
+      # initialize a list and a count of all those that could not be updated
+      # make sure it is visible within the whole class
+        self.set_N, self.count_N = set(), 0
+      # then unmark the marked
+        self.gui.current_db.set_marked_ids(self.set_N)
 
       # Map the rows to book ids
         book_ids = self.gui.library_view.get_selected_ids()
 
-      # some lines are selected, so check for presence of needed column
+      # some lines are selected, so we can check for presence of needed column
         if not self.test_for_column_names():
             return
 
@@ -138,9 +143,27 @@ class InterfaceBabelioNotes(InterfaceAction):
             for i in (ret_soup.get_memory()):
                 prints("{} accès à {}".format(i[1], i[0]))
 
-        info_dialog(self.gui, 'Babelio Notes',
-                'Recherche note et votes sur le site Babelio pour %d livre(s)'%len(book_ids),
+        if row_count > 1 and self.count_N > 1:
+            info_dialog(self.gui, 'Babelio Notes',
+                "<p> Recherche des Notes et des Votes sur le site Babelio pour {} livre(s)</p>"
+                "<p> et {} lignes sont marquées comme non mises à jour</p>"
+                "<p> Le Babelio_id est très probablement absent ou invalide.</p>"
+                "Veuillez le charger manuellement ou bien avec le plugin Babelio_db</p>".format(row_count, self.count_N),
                 show=True)
+        elif row_count > 1 and self.count_N == 1:
+            info_dialog(self.gui, 'Babelio Notes',
+                "<p> Recherche des Notes et des Votes sur le site Babelio pour {} livre(s)</p>"
+                "<p> et {} ligne est marquée comme non mise à jour</p>"
+                "<p> Le Babelio_id est très probablement absent ou invalide.</p>"
+                "<p> Veuillez le charger manuellement ou bien avec le plugin Babelio_db</p>".format(row_count, self.count_N),
+                show=True)
+
+      # new_api does not know anything about marked books, so we use the full db object
+        if len(self.set_N):
+            self.gui.current_db.set_marked_ids(self.set_N)
+      # do not search for marked...
+            # self.gui.search.setEditText('marked:true')
+            # self.gui.search.do_search()
 
     def update_one_line(self, book_id, row_count):
         '''
@@ -166,10 +189,13 @@ class InterfaceBabelioNotes(InterfaceAction):
             db.new_api.set_field(self.on_babelio_name, {book_id: 'Y'})
         else:
             db.new_api.set_field(self.on_babelio_name, {book_id: 'N'})
+            prints("type(self.set_N) : ", type(self.set_N))
+            self.set_N.add(book_id)
+            self.count_N += 1
             if row_count == 1:
                 error_dialog(self.gui, "Babelio Notes",
                          "<p> Si pas banni de Babelio :( ,</p>"
-                         "<p> Babelio_id est très probablement absent ou invalide.</p>"
+                         "<p> Le Babelio_id est très probablement absent ou invalide.</p>"
                          "<p> Veuillez le charger manuellement ou bien avec le plugin Babelio_db</p>", show=True)
             else:
                 # log.info("Accès à babelio!")  TODO
