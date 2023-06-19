@@ -22,8 +22,8 @@ class InterfaceNotesBabelio(InterfaceActionBase):
     description         = 'Recherche la moyenne des notes et le nombre de notes (votes) sur le site de Babelio'
     supported_platforms = ['windows', 'osx', 'linux']
     author              = 'Louis Richard Pirlet based on Christophe work'
-    version             = (4, 0, 0)
-    minimum_calibre_version = (0, 7, 53)
+    version             = (5, 0, 0)
+    minimum_calibre_version = (6, 3, 0)
 
     #: This field defines the GUI plugin class that contains all the code
     #: that actually does something. Its format is module_path:class_name

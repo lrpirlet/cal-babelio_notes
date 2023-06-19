@@ -3,6 +3,7 @@ junk/
 .vscode/*
 todo.txt
 junk*.*
+babelio_notes_doc.docx
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

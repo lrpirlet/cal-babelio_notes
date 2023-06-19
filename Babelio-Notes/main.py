@@ -65,7 +65,7 @@ class InterfaceBabelioNotes(InterfaceAction):
         self.menu = QMenu(self.gui)
         self.menu.clear()
 
-        create_menu_action_unique(self, self.menu, _("Mets à jour les Notes"), 'images/mises-a-jour.png',
+        create_menu_action_unique(self, self.menu, _("Met à jour les Notes"), 'images/mises-a-jour.png',
                                   triggered=self.update_babelio_notes)
         self.menu.addSeparator()
 
