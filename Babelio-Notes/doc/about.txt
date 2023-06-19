@@ -1,5 +1,3 @@
-Le plugin noosfere_util
-========================
 
 Créé juste pour apprendre Python... Je me suis amusé :-).
 

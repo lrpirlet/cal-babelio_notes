@@ -17,7 +17,10 @@ import urllib                                   # to access the web
 from bs4 import BeautifulSoup as BS             # to dismantle and manipulate HTTP (HyperText Markup Language) a text formated utf-8
 import time, datetime
 
-TIME_INTERVAL = 1.2      # this is the minimum interval between 2 access to the web (with decorator on ret_soup())
+# this is the minimum interval between 2 access to the web (with decorator on ret_soup())
+# the default DoS time seems to be 1 sec for a Server: nginx so set it to 1.2 sec
+# I do not mind you to change it, but do not shoot at me then... (I am only the pianist)
+TIME_INTERVAL = 1.2
 
 class Un_par_un(object):
     '''
@@ -89,7 +92,7 @@ def ret_soup(br, url, rkt=None):
     except urllib.error.URLError as e:
         prints("exception occured...")
         prints("code : ",e.code,"reason : ",e.reason)
-        raise Exception('(urlopen_with_retry) Failed while acessing url : ',url)
+        raise Exception('Failed while acessing url : {}, code : {}, reason {}'.format(url,e.code,e.reason))
     soup = BS(sr, "html5lib")
 
     # if DEBUG: prints("DEBUG soup.prettify() :\n",soup.prettify())               # hide_it # très utile parfois, mais que c'est long...
