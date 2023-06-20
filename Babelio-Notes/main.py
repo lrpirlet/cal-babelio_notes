@@ -145,7 +145,8 @@ class InterfaceBabelioNotes(InterfaceAction):
         if DEBUG:
             prints("DEBUG Babelio_Notes")
         for i in (ret_soup.get_memory()):
-            if DEBUG: prints("{} accès à {}".format(i[1], i[0]))
+            if DEBUG:
+                prints("{} accès à {}".format(i[1], i[0]))
             self.logtxt += ("\n{} accès à {}".format(i[1], i[0]))
 
         if row_count > 1 and self.count_N > 1:
@@ -198,7 +199,7 @@ class InterfaceBabelioNotes(InterfaceAction):
         cur_notes, cur_votes = self.get_rating(ids)
 
       # Babelio a été accédé avec succès si cur_votes ou si cur_notes est plus grand que 0
-        if cur_votes:
+        if cur_votes is not None:
             db.new_api.set_field(self.on_babelio_name, {book_id: 'Y'})
         else:
             db.new_api.set_field(self.on_babelio_name, {book_id: 'N'})
@@ -231,9 +232,8 @@ class InterfaceBabelioNotes(InterfaceAction):
     def get_rating(self, ids):
         '''
         go to the book URL on babelio according to babelio_id in ids
-        return notes as float and votes as int
+        return notes as float and votes as int or None, None if not from babelio.com
         '''
-        notes, votes = 0, 0
         br = browser()
         soup = None
         bbl_id = ids["babelio_id"] if "babelio_id" in ids else ""
@@ -248,20 +248,25 @@ class InterfaceBabelioNotes(InterfaceAction):
                 prints("DEBUG Babelio_Notes url deduced from babelio_id : ", bk_url)
             self.logtxt += ("\nAccès à {}".format(bk_url))
         else:
-            self.logtxt += ("\nPas de babelio_id... donc pas d'accès à babelio.com")
-            return notes, votes
+            if not bbl_id:
+                self.logtxt += ("\nPas de babelio_id... donc pas d'accès à babelio.com")
+            else:
+                self.logtxt += ("\nInvalide babelio_id... donc pas d'accès à babelio.com")
+            return None, None
 
         soup = ret_soup(br, bk_url)[0]
         if not soup:
             self.logtxt("\nOups, babelio.com n'a pas répondu.. réseau? banissement??")
-            return notes, votes
+            return None, None
         # if DEBUG:
         #     prints("DEBUG Babelio_Notes soup prettyfied :\n", soup.prettify())      # only for deep debug, too big
 
+      # try here and assume there was no notes and/or no votes to find... set it to 0
         try:
             notes, votes = self.parse_rating(soup)
         except:
-            return notes, votes
+            self.logtxt += ("\nbabelio.com semble ne pas avoir des votes et/ou des notes")
+            return 0, 0
 
         return notes, votes
 
@@ -269,6 +274,8 @@ class InterfaceBabelioNotes(InterfaceAction):
         '''
         find and isolate rating an count of rating in the soup
         returns rating as float and rating_cnt as int
+        will fails if float() or int() is applied to empty string
+        Will probably fails if babelio returns corrupted content
         '''
 
       # if soup.select_one('span[itemprop="aggregateRating"]') fails, an exception will be raised
