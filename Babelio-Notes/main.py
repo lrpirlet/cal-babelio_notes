@@ -202,7 +202,6 @@ class InterfaceBabelioNotes(InterfaceAction):
             db.new_api.set_field(self.on_babelio_name, {book_id: 'Y'})
         else:
             db.new_api.set_field(self.on_babelio_name, {book_id: 'N'})
-            prints("type(self.set_N) : ", type(self.set_N))
             self.set_N.add(book_id)
             self.count_N += 1
 
