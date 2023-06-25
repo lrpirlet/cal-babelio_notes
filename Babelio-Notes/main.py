@@ -221,7 +221,7 @@ class InterfaceBabelioNotes(InterfaceAction):
             else:
                 if DEBUG: prints('DEBUG Babelio_Notes pas de nouveaux votes sur babelio ')
                 self.logtxt += (", pas de notes suppémentaire sur babelio")
-        else:
+        else:       # ne mettre à jour que si cur_notes is not None et > zéro (évite update a zero quand banni...)
             if cur_notes:
                 db.new_api.set_field(self.note_moyenne_name, {book_id: cur_notes})
             if cur_votes:
